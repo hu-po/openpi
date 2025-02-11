@@ -40,8 +40,8 @@ JOINT_LIMITS_DEGREES: dict[str, tuple[float, float]] = {
     "gripper_rot": (-175.0, 175.0),
 }
 JOINT_LIMITS: dict[str, tuple[float, float]] = {
-    joint: (deg * np.pi / 180.0 for deg in JOINT_LIMITS_DEGREES[joint])
-    for joint in JOINT_LIMITS_DEGREES
+    joint: (min_deg * np.pi / 180.0, max_deg * np.pi / 180.0)
+    for joint, (min_deg, max_deg) in JOINT_LIMITS_DEGREES.items()
 }
 
 # Normalize/unnormalize functions for converting between raw and normalized values

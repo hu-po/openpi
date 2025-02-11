@@ -2,6 +2,7 @@ import dataclasses
 import logging
 from pathlib import Path
 from typing import Dict, Any, Literal, Optional
+import uuid
 
 import cv2
 import numpy as np
@@ -68,7 +69,7 @@ def record_episode(env: MyCobotEnv, dataset: LeRobotDataset, max_steps: int) -> 
 
 @dataclasses.dataclass
 class Args:
-    repo_id: str = 'hu-po/mycobot'
+    base_repo_id: str = 'hu-po/mycobot'
     task: str = "DEBUG"
     port: str = _c.DEFAULT_PORT
     baudrate: int = _c.DEFAULT_BAUDRATE
@@ -77,6 +78,10 @@ class Args:
     max_episode_steps: int = 500
 
 def main(args: Args) -> None:
+    # Generate unique repo ID using UUID
+    unique_id = str(uuid.uuid4())[:8]
+    repo_id = f"{args.base_repo_id}-{unique_id}"
+    logger.info(f"Generated unique repo ID: {repo_id}")
 
     env = MyCobotEnv(
         port=args.port,
@@ -84,7 +89,7 @@ def main(args: Args) -> None:
         camera_id=args.camera_id
     )
     
-    dataset = create_empty_dataset(args.repo_id, DatasetConfig())
+    dataset = create_empty_dataset(repo_id, DatasetConfig())
     logger.info(f"Recording episode for task: {args.task}")
     
     record_episode(env, dataset, args.max_episode_steps)
@@ -94,9 +99,8 @@ def main(args: Args) -> None:
     
     if args.push_to_hub:
         logger.info("Pushing dataset to Hugging Face Hub...")
-        dataset.push_to_hub('hu-po/mycobot') # private=True)
-        logger.info("Dataset pushed to Hugging Face Hub successfully.")
-
+        dataset.push_to_hub(repo_id)
+        logger.info(f"Dataset pushed to Hugging Face Hub successfully as: {repo_id}")
 
 if __name__ == "__main__":
     tyro.cli(main) 

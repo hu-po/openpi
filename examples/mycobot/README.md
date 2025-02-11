@@ -25,6 +25,11 @@ to record a dataset of mycobot trajectories:
 PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/record_dataset.py --repo-id hu-po/mycobot-test
 ```
 
+if the robot is on after a script, you can reset it with:
+
+```bash
+PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/reset_robot.py
+```
 
 calculate norm stats:
 
