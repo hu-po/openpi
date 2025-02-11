@@ -14,17 +14,30 @@ DEFAULT_CAMERA_ID: int = 0
 DT: float = 0.02  # 50Hz
 
 # Joint names and default positions
-JOINT_NAMES: list[str] = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
-DEFAULT_RESET_POSITION: list[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+JOINT_NAMES: list[str] = [
+    "waist",          # joint1 - base rotation
+    "shoulder",       # joint2 - shoulder joint
+    "elbow",         # joint3 - elbow joint
+    "wrist_flex",    # joint4 - wrist up/down
+    "wrist_rot",     # joint5 - wrist rotation
+    "gripper_rot"    # joint6 - gripper/end effector rotation
+]
+# HOME_POSITION_DEGREES: list[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+HOME_POSITION_DEGREES: list[float] = [13.35, -90.61, -76.28, 68.99, -76.99, 54.05]
+HOME_POSITION: list[float] = [deg * np.pi / 180.0 for deg in HOME_POSITION_DEGREES]
 
-# Joint limits for MyCobot (radians)
+# Joint limits for MyCobot
+JOINT_LIMITS_DEGREES: dict[str, tuple[float, float]] = {
+    "waist": (-165.0, 165.0),
+    "shoulder": (-165.0, 165.0),
+    "elbow": (-165.0, 165.0),
+    "wrist_flex": (-165.0, 165.0),
+    "wrist_rot": (-165.0, 165.0),
+    "gripper_rot": (-175.0, 175.0),
+}
 JOINT_LIMITS: dict[str, tuple[float, float]] = {
-    "joint1": (-165.0 * np.pi / 180.0, 165.0 * np.pi / 180.0),
-    "joint2": (-165.0 * np.pi / 180.0, 165.0 * np.pi / 180.0),
-    "joint3": (-165.0 * np.pi / 180.0, 165.0 * np.pi / 180.0),
-    "joint4": (-165.0 * np.pi / 180.0, 165.0 * np.pi / 180.0),
-    "joint5": (-165.0 * np.pi / 180.0, 165.0 * np.pi / 180.0),
-    "joint6": (-175.0 * np.pi / 180.0, 175.0 * np.pi / 180.0),
+    joint: (deg * np.pi / 180.0 for deg in JOINT_LIMITS_DEGREES[joint])
+    for joint in JOINT_LIMITS_DEGREES
 }
 
 # Normalize/unnormalize functions for converting between raw and normalized values

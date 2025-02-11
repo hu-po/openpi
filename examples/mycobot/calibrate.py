@@ -29,7 +29,7 @@ def record_cube_corners() -> None:
     )
     corners: List[List[float]] = []
     
-    logger.info("First recording home position")
+    logger.info("Recording home position")
     logger.info("Move robot to home position and press SPACE")
     logger.info("Press q to quit at any time")
     
@@ -46,36 +46,13 @@ def record_cube_corners() -> None:
                 if angles:
                     corners.append(angles)
                     logger.info(f"Recorded home position: {angles}")
-                    break
+                    logger.info("\nHome position recorded. Copy this into your constants.py:")
+                    logger.info("HOME_POSITION = [")
+                    logger.info(f"    {angles},")
+                    logger.info("]")
+                    return
                 else:
                     logger.warning("Failed to get angles, try again")
-    
-    logger.info("Starting cube corner recording sequence")
-    logger.info("Robot will be put in free mode. Manually move to each corner and press SPACE")
-    logger.info("Press q to quit at any time")
-    
-    while len(corners) < 9:  # 1 home + 8 corners
-        with Raw(sys.stdin):
-            key = sys.stdin.read(1)
-            if key == "q":
-                logger.info("Recording cancelled")
-                return
-            elif key == " ":
-                angles = mycobot.get_angles()
-                if angles:
-                    corners.append(angles)
-                    logger.info(f"Recorded corner {len(corners)-1}/8: {angles}")
-                else:
-                    logger.warning("Failed to get angles, try again")
-    
-    logger.info("\nAll corners recorded. Copy this into your constants.py:")
-    logger.info("HOME_POSITION = [")
-    logger.info(f"    {corners[0]},")
-    logger.info("]")
-    logger.info("\nCUBE_CORNERS = [")
-    for corner in corners[1:]:
-        logger.info(f"    {corner},")
-    logger.info("]")
 
 if __name__ == "__main__":
     record_cube_corners() 

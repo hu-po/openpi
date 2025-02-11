@@ -42,12 +42,12 @@ class MyCobotRecorder:
 
     def reset(self) -> None:
         """Reset robot to home position"""
-        home_angles = _c.DEFAULT_RESET_POSITION
+        home_angles = _c.HOME_POSITION
         self.robot.send_angles(home_angles, 50)
 
     def get_observation(self) -> Dict[str, Any]:
         """Get current observation including joint states and camera image"""
-        joint_positions = self.robot.get_angles() or _c.DEFAULT_RESET_POSITION
+        joint_positions = self.robot.get_angles() or _c.HOME_POSITION
         
         ret, frame = self.camera.read()
         if not ret:

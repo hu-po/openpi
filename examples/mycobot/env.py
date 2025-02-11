@@ -19,7 +19,7 @@ class MyCobotEnv(_environment.Environment):
                  port: str = _c.DEFAULT_PORT,
                  baudrate: int = _c.DEFAULT_BAUDRATE,
                  camera_id: int = _c.DEFAULT_CAMERA_ID,
-                 reset_position: list[float] = _c.DEFAULT_RESET_POSITION,
+                 reset_position: list[float] = _c.HOME_POSITION,
                  action_space: Literal["joint_velocity", "joint_position"] = "joint_velocity",
                  render_height: int = 224,
                  render_width: int = 224) -> None:

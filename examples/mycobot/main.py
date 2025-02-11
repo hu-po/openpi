@@ -30,7 +30,7 @@ def main(args: Args) -> None:
 
     metadata = ws_client_policy.get_server_metadata()
     runtime = _runtime.Runtime(
-        environment=_env.MyCobotEnv(reset_position=metadata.get("reset_pose", _c.DEFAULT_RESET_POSITION)),
+        environment=_env.MyCobotEnv(reset_position=metadata.get("reset_pose", _c.HOME_POSITION)),
         agent=_policy_agent.PolicyAgent(
             policy=action_chunk_broker.ActionChunkBroker(
                 policy=ws_client_policy,
