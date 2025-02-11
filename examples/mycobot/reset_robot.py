@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Final
 from pymycobot.mycobot import MyCobot
 
