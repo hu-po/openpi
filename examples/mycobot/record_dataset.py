@@ -26,11 +26,11 @@ class DatasetConfig:
 
 class MyCobotRecorder:
     def __init__(self, 
-                 port: str = "/dev/ttyAMA0",
-                 baudrate: int = 1000000,
-                 camera_id: int = 0,
-                 render_height: int = 224,
-                 render_width: int = 224) -> None:
+                 port: str = _c.DEFAULT_PORT,
+                 baudrate: int = _c.DEFAULT_BAUDRATE,
+                 camera_id: int = _c.DEFAULT_CAMERA_ID,
+                 render_height: int = _c.DEFAULT_RENDER_HEIGHT,
+                 render_width: int = _c.DEFAULT_RENDER_WIDTH) -> None:
         self.robot = MyCobot(port, baudrate)
         self.camera = cv2.VideoCapture(camera_id)
         self._render_height = render_height
@@ -41,9 +41,7 @@ class MyCobotRecorder:
         logger.info("MyCobotRecorder initialized")
 
     def reset(self) -> None:
-        """Reset robot to home position"""
-        home_angles = _c.HOME_POSITION
-        self.robot.send_angles(home_angles, 50)
+        self.robot.send_angles(_c.HOME_POSITION, 50)
 
     def get_observation(self) -> Dict[str, Any]:
         """Get current observation including joint states and camera image"""
@@ -70,21 +68,15 @@ def create_empty_dataset(
     repo_id: str,
     dataset_config: DatasetConfig = DatasetConfig()
 ) -> LeRobotDataset:
-    motors = [
-        "joint1", "joint2", "joint3", 
-        "joint4", "joint5", "joint6",
-        "gripper"
-    ]
-
     features = {
         "observation.state": {
             "dtype": "float32",
-            "shape": (len(motors),),
-            "names": [motors],
+            "shape": (len(_c.JOINT_NAMES),),
+            "names": [_c.JOINT_NAMES],
         },
         "observation.images.camera": {
             "dtype": "image",
-            "shape": (3, 224, 224),
+            "shape": (3, _c.DEFAULT_RENDER_HEIGHT, _c.DEFAULT_RENDER_WIDTH),
             "names": ["channels", "height", "width"],
         }
     }
@@ -108,9 +100,9 @@ def create_empty_dataset(
 class Args:
     repo_id: str
     task: str = "DEBUG"
-    port: str = "/dev/ttyAMA0" 
-    baudrate: int = 1000000
-    camera_id: int = 0
+    port: str = _c.DEFAULT_PORT
+    baudrate: int = _c.DEFAULT_BAUDRATE
+    camera_id: int = _c.DEFAULT_CAMERA_ID
     push_to_hub: bool = False
     max_episode_steps: int = 500
 
