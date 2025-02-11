@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Dict, Any, Literal, Optional
 
 import cv2
-from huggingface_hub import login
 import numpy as np
 import tyro
 from pymycobot.mycobot import MyCobot
@@ -78,13 +77,6 @@ class Args:
     max_episode_steps: int = 500
 
 def main(args: Args) -> None:
-
-    # Authenticate with Hugging Face
-    hf_token = os.environ.get('HF_TOKEN')
-    if hf_token is None:
-        raise ValueError("Please set the HF_TOKEN environment variable with your Hugging Face token.")
-    logger.info("Logging into Hugging Face Hub...")
-    login(token=hf_token)
 
     env = MyCobotEnv(
         port=args.port,

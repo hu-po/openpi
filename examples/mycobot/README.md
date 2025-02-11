@@ -11,11 +11,20 @@ on robot (raspberry pi with mycobot280 and usb camera on /dev/video0)
 uv run examples/mcb/main.py
 ```
 
+login to huggingface, create a read and write token:
+
+```bash
+uv pip install -U "huggingface_hub[cli]"
+uv run huggingface-cli login
+```
+
+
 to record a dataset of mycobot trajectories:
 
 ```bash
 uv run examples/mycobot/record_dataset.py --repo-id oop/mycobot-dataset
 ```
+
 
 calculate norm stats:
 
