@@ -7,8 +7,7 @@ from openpi_client.runtime import runtime as _runtime
 from openpi_client.runtime.agents import policy_agent as _policy_agent
 import tyro
 
-from .env import env as _env
-
+from openpi.examples.mycobot import env as _env
 
 @dataclasses.dataclass
 class Args:
