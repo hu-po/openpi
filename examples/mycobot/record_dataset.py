@@ -29,8 +29,8 @@ class MyCobotRecorder:
                  port: str = _c.DEFAULT_PORT,
                  baudrate: int = _c.DEFAULT_BAUDRATE,
                  camera_id: int = _c.DEFAULT_CAMERA_ID,
-                 render_height: int = _c.DEFAULT_RENDER_HEIGHT,
-                 render_width: int = _c.DEFAULT_RENDER_WIDTH) -> None:
+                 render_height: int = _c.IMAGE_HEIGHT,
+                 render_width: int = _c.IMAGE_WIDTH) -> None:
         self.robot = MyCobot(port, baudrate)
         self.camera = cv2.VideoCapture(camera_id)
         self._render_height = render_height
@@ -76,7 +76,7 @@ def create_empty_dataset(
         },
         "observation.images.camera": {
             "dtype": "image",
-            "shape": (3, _c.DEFAULT_RENDER_HEIGHT, _c.DEFAULT_RENDER_WIDTH),
+            "shape": (3, _c.IMAGE_HEIGHT, _c.IMAGE_WIDTH),
             "names": ["channels", "height", "width"],
         }
     }

@@ -13,6 +13,10 @@ DEFAULT_CAMERA_ID: int = 0
 # Time step for control loop
 DT: float = 0.02  # 50Hz
 
+# camera sizes
+IMAGE_HEIGHT: int = 224
+IMAGE_WIDTH: int = 224
+
 # Joint names and default positions
 JOINT_NAMES: list[str] = [
     "waist",          # joint1 - base rotation

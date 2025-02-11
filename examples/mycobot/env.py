@@ -21,8 +21,8 @@ class MyCobotEnv(_environment.Environment):
                  camera_id: int = _c.DEFAULT_CAMERA_ID,
                  reset_position: list[float] = _c.HOME_POSITION,
                  action_space: Literal["joint_velocity", "joint_position"] = "joint_velocity",
-                 render_height: int = 224,
-                 render_width: int = 224) -> None:
+                 render_height: int = _c.IMAGE_HEIGHT,
+                 render_width: int = _c.IMAGE_WIDTH) -> None:
         self.robot = MyCobot(port, baudrate)
         self.camera = cv2.VideoCapture(camera_id)
         self.reset_position = reset_position
@@ -54,7 +54,7 @@ class MyCobotEnv(_environment.Environment):
         ret, frame = self.camera.read()
         if not ret:
             logger.warning("Failed to get camera frame")
-            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            frame = np.zeros((_c.IMAGE_HEIGHT, _c.IMAGE_WIDTH, 3), dtype=np.uint8)
             
         frame = image_tools.convert_to_uint8(
             image_tools.resize_with_pad(frame, self._render_height, self._render_width)
