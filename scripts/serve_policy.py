@@ -76,7 +76,7 @@ DEFAULT_CHECKPOINT: dict[EnvMode, Checkpoint] = {
     ),
     EnvMode.MCB: Checkpoint(
         config="pi0_mycobot",
-        dir="s3://openpi-assets/checkpoints/pi0_fast_droid", # TODO: use droid for now
+        dir="s3://openpi-assets/checkpoints/pi0_base",
     ),
 }
 

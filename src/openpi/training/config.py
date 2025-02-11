@@ -18,6 +18,7 @@ import openpi.models.pi0 as pi0
 import openpi.models.pi0_fast as pi0_fast
 import openpi.models.tokenizer as _tokenizer
 import openpi.policies.aloha_policy as aloha_policy
+import openpi.policies.mycobot_policy as mycobot_policy
 import openpi.policies.droid_policy as droid_policy
 import openpi.policies.libero_policy as libero_policy
 import openpi.shared.download as _download
@@ -293,6 +294,25 @@ class LeRobotLiberoDataConfig(DataConfigFactory):
 
 
 @dataclasses.dataclass(frozen=True)
+class LeRobotMyCobotDataConfig(DataConfigFactory):
+    # If provided, will be injected into the input data if the "prompt" key is not present.
+    default_prompt: str | None = "draw a circle"
+
+    @override
+    def create(self, assets_dirs: pathlib.Path, model_config: _model.BaseModelConfig) -> DataConfig:
+        data_transforms = _transforms.Group(
+            inputs=[mycobot_policy.MyCobotInputs(action_dim=model_config.action_dim)],
+            outputs=[mycobot_policy.MyCobotOutputs()],
+        )
+        model_transforms = ModelTransformFactory(default_prompt=self.default_prompt)(model_config)
+        return dataclasses.replace(
+            self.create_base_config(assets_dirs),
+            data_transforms=data_transforms,
+            model_transforms=model_transforms,
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class TrainConfig:
     # Name of the config. Must be unique. Will be used to reference this config.
     name: tyro.conf.Suppress[str]
@@ -409,6 +429,16 @@ _CONFIGS = [
         ),
     ),
     #
+    # Inference MyCobot configs.
+    #
+    TrainConfig(
+        name="pi0_mycobot",
+        model=pi0.Pi0Config(),
+        data=LeRobotMyCobotDataConfig(
+            assets=AssetsConfig(asset_id="mycobot"),
+            default_prompt="move the robot to the left",
+        ),
+    ),
     # Inference DROID configs.
     #
     TrainConfig(
