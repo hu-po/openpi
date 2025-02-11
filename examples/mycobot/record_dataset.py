@@ -11,6 +11,8 @@ from typing_extensions import override
 
 from lerobot.common.datasets.lerobot_dataset import LEROBOT_HOME, LeRobotDataset
 
+from examples.mycobot import constants as _c
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -40,12 +42,12 @@ class MyCobotRecorder:
 
     def reset(self) -> None:
         """Reset robot to home position"""
-        home_angles = [0, 0, 0, 0, 0, 0]
+        home_angles = _c.DEFAULT_RESET_POSITION
         self.robot.send_angles(home_angles, 50)
 
     def get_observation(self) -> Dict[str, Any]:
         """Get current observation including joint states and camera image"""
-        joint_positions = self.robot.get_angles() or [0]*6
+        joint_positions = self.robot.get_angles() or _c.DEFAULT_RESET_POSITION
         gripper_pos = self.robot.get_gripper_value() or 0
         gripper_pos = np.clip(gripper_pos/100, 0, 1)
         
