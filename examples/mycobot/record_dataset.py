@@ -98,12 +98,12 @@ def create_empty_dataset(
 
 @dataclasses.dataclass
 class Args:
-    repo_id: str
+    repo_id: str = 'hu-po/mycobot'
     task: str = "DEBUG"
     port: str = _c.DEFAULT_PORT
     baudrate: int = _c.DEFAULT_BAUDRATE
     camera_id: int = _c.DEFAULT_CAMERA_ID
-    push_to_hub: bool = False
+    push_to_hub: bool = True
     max_episode_steps: int = 500
 
 def main(args: Args) -> None:
@@ -132,7 +132,10 @@ def main(args: Args) -> None:
     dataset.consolidate()
     
     if args.push_to_hub:
-        dataset.push_to_hub()
+        logger.info("Pushing dataset to Hugging Face Hub...")
+        dataset.push_to_hub('hu-po/mycobot') # private=True)
+        logger.info("Dataset pushed to Hugging Face Hub successfully.")
+
 
 if __name__ == "__main__":
     tyro.cli(main) 
