@@ -48,8 +48,6 @@ class MyCobotRecorder:
     def get_observation(self) -> Dict[str, Any]:
         """Get current observation including joint states and camera image"""
         joint_positions = self.robot.get_angles() or _c.DEFAULT_RESET_POSITION
-        gripper_pos = self.robot.get_gripper_value() or 0
-        gripper_pos = np.clip(gripper_pos/100, 0, 1)
         
         ret, frame = self.camera.read()
         if not ret:
@@ -60,7 +58,7 @@ class MyCobotRecorder:
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
         return {
-            "state": np.array(joint_positions + [gripper_pos], dtype=np.float32),
+            "state": np.array(joint_positions, dtype=np.float32),
             "image": frame
         }
 

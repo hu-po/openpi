@@ -27,10 +27,6 @@ JOINT_LIMITS: dict[str, tuple[float, float]] = {
     "joint6": (-175.0 * np.pi / 180.0, 175.0 * np.pi / 180.0),
 }
 
-# Gripper constants
-GRIPPER_OPEN: float = 100.0  # Fully open position
-GRIPPER_CLOSED: float = 0.0   # Fully closed position
-
 # Normalize/unnormalize functions for converting between raw and normalized values
 def normalize_joint_position(x: float, joint_name: str) -> float:
     """Normalize joint position from radians to [-1, 1]"""
@@ -42,16 +38,6 @@ def unnormalize_joint_position(x: float, joint_name: str) -> float:
     min_val, max_val = JOINT_LIMITS[joint_name]
     return 0.5 * (x + 1.0) * (max_val - min_val) + min_val
 
-def normalize_gripper_position(x: float) -> float:
-    """Normalize gripper position from [0, 100] to [0, 1]"""
-    return x / GRIPPER_OPEN
-
-def unnormalize_gripper_position(x: float) -> float:
-    """Unnormalize gripper position from [0, 1] to [0, 100]"""
-    return x * GRIPPER_OPEN
-
 # Type aliases for normalize/unnormalize functions
 JOINT_POSITION_NORMALIZE_FN: Callable[[float, str], float] = normalize_joint_position
 JOINT_POSITION_UNNORMALIZE_FN: Callable[[float, str], float] = unnormalize_joint_position
-GRIPPER_POSITION_NORMALIZE_FN: Callable[[float], float] = normalize_gripper_position
-GRIPPER_POSITION_UNNORMALIZE_FN: Callable[[float], float] = unnormalize_gripper_position 

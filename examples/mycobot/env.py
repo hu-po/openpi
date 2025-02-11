@@ -21,14 +21,12 @@ class MyCobotEnv(_environment.Environment):
                  camera_id: int = _c.DEFAULT_CAMERA_ID,
                  reset_position: list[float] = _c.DEFAULT_RESET_POSITION,
                  action_space: Literal["joint_velocity", "joint_position"] = "joint_velocity",
-                 gripper_action_space: Literal["position"] = "position",
                  render_height: int = 224,
                  render_width: int = 224) -> None:
         self.robot = MyCobot(port, baudrate)
         self.camera = cv2.VideoCapture(camera_id)
         self.reset_position = reset_position
         self.action_space = action_space
-        self.gripper_action_space = gripper_action_space
         self._render_height = render_height
         self._render_width = render_width
         self._ts = None
@@ -39,8 +37,6 @@ class MyCobotEnv(_environment.Environment):
     def reset(self) -> None:
         self.robot.send_angles(self.reset_position, 50)
         time.sleep(3)
-        self.robot.set_gripper_value(constants.GRIPPER_CLOSED, 50)
-        time.sleep(1)
         self._ts = self.get_observation()
         
     @override
@@ -49,18 +45,12 @@ class MyCobotEnv(_environment.Environment):
 
     @override
     def get_observation(self) -> Dict[str, Any]:
-        # Get joint positions and normalize
         joint_positions = self.robot.get_angles() or [0]*6
         normalized_joints = [
             _c.JOINT_POSITION_NORMALIZE_FN(pos, name) 
             for pos, name in zip(joint_positions, _c.JOINT_NAMES)
         ]
         
-        # Get and normalize gripper position
-        gripper_pos = self.robot.get_gripper_value() or _c.GRIPPER_CLOSED
-        normalized_gripper = _c.GRIPPER_POSITION_NORMALIZE_FN(gripper_pos)
-        
-        # Get camera frame
         ret, frame = self.camera.read()
         if not ret:
             logger.warning("Failed to get camera frame")
@@ -72,7 +62,7 @@ class MyCobotEnv(_environment.Environment):
         frame = np.transpose(frame, (2, 0, 1))
         
         return {
-            "state": normalized_joints + [normalized_gripper],
+            "state": normalized_joints,
             "images": {
                 "cam_main": frame
             }
@@ -80,10 +70,8 @@ class MyCobotEnv(_environment.Environment):
 
     @override
     def apply_action(self, action: Dict[str, np.ndarray]) -> None:
-        joint_action = action["actions"][:-1]
-        gripper_action = action["actions"][-1]
+        joint_action = action["actions"]
         
-        # Unnormalize joint actions
         if self.action_space == "joint_velocity":
             curr_angles = self.robot.get_angles() or [0]*6
             target_angles = [
@@ -101,10 +89,6 @@ class MyCobotEnv(_environment.Environment):
                 for pos, name in zip(joint_action, _c.JOINT_NAMES)
             ]
             self.robot.send_angles(unnorm_angles, 50)
-            
-        # Unnormalize and apply gripper action
-        gripper_pos = _c.GRIPPER_POSITION_UNNORMALIZE_FN(gripper_action)
-        self.robot.set_gripper_value(int(gripper_pos), 50)
         time.sleep(_c.DT)
 
     def __del__(self) -> None:
