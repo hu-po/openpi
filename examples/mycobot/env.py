@@ -46,6 +46,7 @@ class MyCobotEnv(_environment.Environment):
     @override
     def get_observation(self) -> Dict[str, Any]:
         joint_positions = self.robot.get_angles() or [0]*6
+        logger.info(f"Joint positions: {joint_positions}")
         normalized_joints = [
             _c.JOINT_POSITION_NORMALIZE_FN(pos, name) 
             for pos, name in zip(joint_positions, _c.JOINT_NAMES)
@@ -94,3 +95,7 @@ class MyCobotEnv(_environment.Environment):
     def __del__(self) -> None:
         if hasattr(self, 'camera'):
             self.camera.release() 
+        if hasattr(self, 'robot'):
+            self.robot.send_angles(self.reset_position, 50)
+            time.sleep(3)
+            self.robot.release_all_servos()

@@ -22,7 +22,7 @@ uv run huggingface-cli login
 to record a dataset of mycobot trajectories:
 
 ```bash
-uv run examples/mycobot/record_dataset.py --repo-id oop/mycobot-dataset
+PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/record_dataset.py --repo-id hu-po/mycobot-test
 ```
 
 
