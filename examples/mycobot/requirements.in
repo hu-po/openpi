@@ -1,2 +1,3 @@
 huggingface_hub[cli]
 evdev
+opencv-python

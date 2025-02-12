@@ -7,10 +7,8 @@ from typing_extensions import override
 from openpi_client import image_tools
 from openpi_client.runtime import environment as _environment
 
-from openpi.examples.mycobot import constants as _c
-from openpi.examples.mycobot.robot import Robot
-from openpi.examples.mycobot.camera import Camera
-from openpi.examples.mycobot.tablet import Tablet
+from examples.mycobot import constants as _c
+from examples.mycobot import hardware as _hw
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +23,9 @@ class MyCobotEnv(_environment.Environment):
         render_height: int = _c.IMAGE_HEIGHT,
         render_width: int = _c.IMAGE_WIDTH
     ) -> None:
-        self.robot = Robot(port, baudrate)
-        self.camera = Camera(camera_id)
-        self.tablet = Tablet()
+        self.robot = _hw.Robot(port, baudrate)
+        self.camera = _hw.Camera(camera_id)
+        self.tablet = _hw.Tablet()
         self.reset_position = reset_position
         self.action_space = action_space
         self._render_height = render_height

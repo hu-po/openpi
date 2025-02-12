@@ -12,7 +12,7 @@ import termios
 import tty
 import sys
 
-from openpi.examples.mycobot import constants as _c
+from examples.mycobot import constants as _c
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

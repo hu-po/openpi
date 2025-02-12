@@ -20,7 +20,7 @@ this is a cheap robot, so when the servos are active they will produce a high pi
 try to not leave the robot in this state, reset the robot (release servos) if you aren't using it.
 
 ```bash
-PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/reset_robot.py
+uv run examples/mycobot/hardware.py -c release
 ```
 
 plug in a usb camera to the robot computer, verify it is available:
@@ -35,6 +35,7 @@ plug in the tablet via usb-c to the robot computer, verify it is available:
 ls /dev/input/
 sudo apt-get install evtest
 sudo evtest
+uv pip install evdev
 ```
 
 you will need to modify permissions to access the tablet:
