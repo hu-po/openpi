@@ -280,4 +280,5 @@ def main(args: Args) -> None:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, force=True)
-    tyro.cli(main)
+    args = tyro.cli(Args)
+    main(args)
