@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import time
 from typing import Dict, List, Optional, Tuple, Union
 from pymycobot.mycobot import MyCobot
-import dataclasses
+from dataclasses import dataclass
 import tyro
 import termios
 import tty
@@ -17,15 +17,12 @@ from examples.mycobot import constants as _c
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@dataclasses.dataclass
+@dataclass
 class Args:
-    command: str = tyro.conf.arg(
-        name="command", 
-        aliases=["-c"], 
-        default=tyro.MISSING,
-        help="Available commands: test, test_camera, test_robot, test_tablet, reset_robot, record_home"
-    )
-    debug: bool = tyro.conf.arg(name="debug", aliases=["-d"], default=False)
+    c: str = "reset"
+    """Command to run (i.e. test, test_camera, test_robot, test_tablet, reset, record_home"""
+    d: bool = False
+    """Debug mode"""
 
 class Camera:
     def __init__(
@@ -257,29 +254,28 @@ class Tablet:
             logger.error("Tablet test failed - no device found")
 
 def main(args: Args) -> None:
-    if args.debug:
+    if args.d:
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled")
-    
-    if args.command == "test":
+    if args.c == "test":
         logger.info("Running all hardware tests...")
         Camera.test()
         Robot.test()
         Tablet.test()
-    elif args.command == "test_camera":
+    elif args.c == "test_camera":
         Camera.test()
-    elif args.command == "test_robot":
+    elif args.c == "test_robot":
         Robot.test()
-    elif args.command == "test_tablet":
+    elif args.c == "test_tablet":
         Tablet.test()
-    elif args.command == "reset_robot":
+    elif args.c == "reset_robot":
         robot = Robot()
         robot.reset()
-    elif args.command == "record_home":
+    elif args.c == "record_home":
         robot = Robot()
         robot.record_home()
     else:
-        logger.error(f"Unknown command: {args.command}")
+        logger.error(f"Unknown command: {args.c}")
         logger.info("Available commands: test, test_camera, test_robot, test_tablet, reset_robot, record_home")
 
 if __name__ == "__main__":
