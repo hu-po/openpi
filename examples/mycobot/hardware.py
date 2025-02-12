@@ -96,7 +96,7 @@ def test_robot() -> None:
 def calibrate() -> None:
     robot = Robot()
     positions: List[List[float]] = []
-    logger.info("Recording up to 10 positions")
+    logger.info("Recording up to 5 positions")
     logger.info("Move robot and press SPACE to record each position")
     logger.info("Press q to finish recording")
     robot._robot.release_all_servos() # floppy mode
@@ -111,7 +111,7 @@ def calibrate() -> None:
         def __exit__(self, type_, value, traceback):
             termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
 
-    while len(positions) < 10:
+    while len(positions) < 5:
         with Raw(sys.stdin):
             key = sys.stdin.read(1)
             if key == "q":
@@ -205,7 +205,7 @@ def square() -> None:
     coords = robot._robot.get_coords()
     logger.info(f"Coords: {coords}")
 
-def spiral(waypoints: int = 100, max_radius: float = 50.0) -> None:
+def spiral(waypoints: int = 100, max_radius: float = 30.0) -> None:
     """Draw a spiral pattern starting from home position.
     
     Args:
