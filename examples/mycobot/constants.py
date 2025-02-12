@@ -26,14 +26,14 @@ JOINT_NAMES: list[str] = [
 
 # robot positions (from calibration process, these are in DEGREES)
 SLEEP_POSITION: list[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-HOME_POSITION: list[float] = [5.97, -84.90, -79.98, 41.13, 100.45, -33.92]
+HOME_POSITION: list[float] = [-15.46, -100.54, -56.86, 54.75, 87.62, -17.13]
 JOINT_LIMITS: dict[str, tuple[float, float]] = {
-    "waist": (-35.68, 5.97),
-    "shoulder": (-106.69, -84.90),
-    "elbow": (-86.48, -15.99),
-    "wrist_flex": (-1.66, 64.33),
-    "wrist_rot": (100.28, 104.50),
-    "gripper_rot": (-33.92, -21.79),
+    "waist": (-30.05, 7.91),
+    "shoulder": (-108.36, -91.93),
+    "elbow": (-89.82, -6.85),
+    "wrist_flex": (-3.86, 71.27),
+    "wrist_rot": (87.36, 90.43),
+    "gripper_rot": (-25.04, -15.64),
 }
 
 # Normalize/unnormalize functions for converting between raw and normalized values
