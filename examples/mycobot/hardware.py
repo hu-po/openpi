@@ -240,22 +240,77 @@ def spiral(waypoints: int = 100, max_radius: float = 30.0) -> None:
 
 
 class Tablet:
-    def __init__(self,
-                 device_name: str = _c.DEFAULT_TABLET_DEVICE,
-                 canvas_size: Tuple[int, int] = _c.DEFAULT_CANVAS_SIZE,
-                 max_steps: int = _c.DEFAULT_MAX_STEPS) -> None:
+    def __init__(
+        self,
+        device_name: str = _c.TABLET_DEVICE_NAME,
+        canvas_size: Tuple[int, int] = _c.TABLET_CANVAS_SIZE,
+        max_steps: int = _c.TABLET_MAX_STEPS,
+    ) -> None:
         self.canvas_size = canvas_size
         self.max_steps = max_steps
         self.buffer = np.zeros(self.canvas_size, dtype=np.uint8)
-        self.state: Dict[str, int] = {'x': 0, 'y': 0, 'pressure': 0, 'tilt_x': 0, 'tilt_y': 0}
+        self.state: Dict[str, int] = {
+            "x": 0, "y": 0, "pressure": 0, "tilt_x": 0, "tilt_y": 0
+        }
         self.step_count = 0
-        
+        self.device: Optional[evdev.InputDevice] = None
+        self._open_device(device_name)
+        self._capture_thread: Optional[threading.Thread] = None
+        self._stop_event = threading.Event()
+
+    def __enter__(self):
+        """
+        Context manager entrypoint: automatically start background capturing.
+        """
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Context manager exit: stop capturing thread, ensure cleanup.
+        """
+        self.stop()
+
+    def start(self):
+        """
+        Manually start background capture if not using 'with Tablet() as t:'.
+        """
+        if not self.device:
+            logger.warning("Cannot start - no device found/initialized.")
+            return
+
+        # Clear the stop event (so that the capture loop runs)
+        self._stop_event.clear()
+
+        if self._capture_thread is None or not self._capture_thread.is_alive():
+            self._capture_thread = threading.Thread(
+                target=self._capture_loop,
+                name="TabletCaptureThread",
+                daemon=True,  # or False, depends on preference
+            )
+            self._capture_thread.start()
+            logger.info("Tablet capture thread started.")
+
+    def stop(self):
+        """
+        Manually stop background capture if not using the context manager.
+        """
+        self._stop_event.set()
+        if self._capture_thread is not None:
+            self._capture_thread.join(timeout=2.0)
+            self._capture_thread = None
+        logger.info("Tablet capture thread stopped.")
+        self.display_result()
+
+    def _open_device(self, device_name: str) -> None:
+        """
+        Helper to find/open the evdev device matching 'device_name'.
+        """
         devices = evdev.list_devices()
         if not devices:
-            logger.error("No input devices found. Try running with sudo or add user to input group")
-            self.device = None
+            logger.error("No input devices found.")
             return
-        
+
         for path in devices:
             try:
                 dev = evdev.InputDevice(path)
@@ -266,28 +321,76 @@ class Tablet:
             except (PermissionError, OSError) as e:
                 logger.error(f"Permission denied for device {path}: {e}")
         else:
-            logger.error("Wacom pen device not found")
-            self.device = None
+            logger.error("Wacom pen device not found.")
             return
 
         caps = dict(self.device.capabilities()[evdev.ecodes.EV_ABS])
         self.x_info = caps[evdev.ecodes.ABS_X]
         self.y_info = caps[evdev.ecodes.ABS_Y]
         self.p_info = caps[evdev.ecodes.ABS_PRESSURE]
-        self.tilt_x_info = caps[evdev.ecodes.ABS_TILT_X]
-        self.tilt_y_info = caps[evdev.ecodes.ABS_TILT_Y]
+        self.tilt_x_info = caps.get(evdev.ecodes.ABS_TILT_X, None)
+        self.tilt_y_info = caps.get(evdev.ecodes.ABS_TILT_Y, None)
         
         logger.info(f"X range: {self.x_info.min} to {self.x_info.max}")
         logger.info(f"Y range: {self.y_info.min} to {self.y_info.max}")
         logger.info(f"Pressure range: {self.p_info.min} to {self.p_info.max}")
-        logger.info(f"Tilt X range: {self.tilt_x_info.min} to {self.tilt_x_info.max}")
-        logger.info(f"Tilt Y range: {self.tilt_y_info.min} to {self.tilt_y_info.max}")
+        if self.tilt_x_info:
+            logger.info(f"Tilt X range: {self.tilt_x_info.min} to {self.tilt_x_info.max}")
+        if self.tilt_y_info:
+            logger.info(f"Tilt Y range: {self.tilt_y_info.min} to {self.tilt_y_info.max}")
+
+    def _capture_loop(self):
+        """
+        The background thread: reads tablet events in a loop and updates buffer.
+        """
+        logger.info("Entering tablet capture loop.")
+        while not self._stop_event.is_set():
+            try:
+                # We'll use read() which returns next event or blocks until available
+                for event in self.device.read():
+                    if self._stop_event.is_set():
+                        break
+                    if event.type == evdev.ecodes.EV_ABS:
+                        self._handle_event(event)
+            except OSError as e:
+                # read() can raise OSError if device is disconnected, permissions changed, etc.
+                logger.error(f"Tablet device read error: {e}")
+                break
+            except Exception as e:
+                logger.error(f"Unexpected error in capture loop: {e}", exc_info=True)
+                break
+
+        logger.info("Exiting tablet capture loop.")
+
+    def _handle_event(self, event: evdev.events.InputEvent) -> None:
+        # same logic you currently have
+        if event.code == evdev.ecodes.ABS_X:
+            self.state["x"] = event.value
+        elif event.code == evdev.ecodes.ABS_Y:
+            self.state["y"] = event.value
+        elif event.code == evdev.ecodes.ABS_PRESSURE:
+            self.state["pressure"] = event.value
+            if self.state["pressure"] > 0:
+                x, y, intensity = self._map_coordinates(
+                    self.state["x"], self.state["y"], self.state["pressure"]
+                )
+                self.draw_point(x, y, intensity)
+                self.step_count += 1
+                if self.step_count >= self.max_steps:
+                    logger.info("Maximum steps reached.")
+                    # Instead of raising KeyboardInterrupt, let's just stop:
+                    self.stop()
+        elif event.code == evdev.ecodes.ABS_TILT_X and self.tilt_x_info:
+            self.state["tilt_x"] = event.value
+        elif event.code == evdev.ecodes.ABS_TILT_Y and self.tilt_y_info:
+            self.state["tilt_y"] = event.value
 
     @staticmethod
     def _normalize(value: int, min_val: int, max_val: int) -> float:
+        # same as before
         return min(max((value - min_val) / (max_val - min_val), 0), 1)
 
-    def _map_coordinates(self, x: int, y: int, p: int) -> Tuple[int, int, float]:
+    def _map_coordinates(self, x: int, y: int, p: int):
         norm_x = self._normalize(x, self.x_info.min, self.x_info.max)
         norm_y = self._normalize(y, self.y_info.min, self.y_info.max)
         norm_p = self._normalize(p, self.p_info.min, self.p_info.max)
@@ -302,55 +405,12 @@ class Tablet:
             for dx in [-1, 0, 1]:
                 for dy in [-1, 0, 1]:
                     new_x, new_y = x + dx, y + dy
-                    if 0 <= new_x < self.canvas_size[0] and 0 <= new_y < self.canvas_size[1]:
+                    if (0 <= new_x < self.canvas_size[0]) and (0 <= new_y < self.canvas_size[1]):
                         self.buffer[new_y, new_x] = min(255, int((1.0 - intensity) * 255))
 
-    def capture(self, duration: float = _c.DEFAULT_CAPTURE_DURATION) -> None:
-        if not self.device:
-            logger.error("No tablet device initialized")
-            return
-        try:
-            start_time = time.time()
-            for event in self.device.read_loop():
-                if time.time() - start_time > duration:
-                    logger.info(f"Time limit ({duration} seconds) reached")
-                    break
-                if event.type == evdev.ecodes.EV_ABS:
-                    self._handle_event(event)
-        except KeyboardInterrupt:
-            logger.info("Received keyboard interrupt")
-        except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
-        finally:
-            self.display_result()
-
-    def _handle_event(self, event: evdev.events.InputEvent) -> None:
-        if event.code == evdev.ecodes.ABS_X:
-            self.state['x'] = event.value
-        elif event.code == evdev.ecodes.ABS_Y:
-            self.state['y'] = event.value
-        elif event.code == evdev.ecodes.ABS_TILT_X:
-            self.state['tilt_x'] = event.value
-        elif event.code == evdev.ecodes.ABS_TILT_Y:
-            self.state['tilt_y'] = event.value
-        elif event.code == evdev.ecodes.ABS_PRESSURE:
-            self.state['pressure'] = event.value
-            if self.state['pressure'] > 0:
-                x, y, intensity = self._map_coordinates(
-                    self.state['x'], self.state['y'], self.state['pressure'])
-                self.draw_point(x, y, intensity)
-                self.step_count += 1
-                if self.step_count >= self.max_steps:
-                    logger.info("Maximum steps reached")
-                    raise KeyboardInterrupt
-
     def display_result(self) -> None:
-        logger.info(f"Buffer size: {self.buffer.shape}")
-        logger.info(f"Buffer type: {self.buffer.dtype}")
-        logger.info(f"Buffer min: {self.buffer.min()}")
-        logger.info(f"Buffer max: {self.buffer.max()}")
-        plt.switch_backend('Agg')
-        plt.imsave('tablet_output.png', self.buffer, cmap='Greys')
+        plt.switch_backend("Agg")
+        plt.imsave("tablet_output.png", self.buffer, cmap="Greys")
         logger.info("Saved output to tablet_output.png")
 
 def test_tablet() -> None:
