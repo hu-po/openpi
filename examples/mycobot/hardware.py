@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Args:
-    c: str = "reset"
+    cmd: str = "reset"
     """Command to run (i.e. test, test_camera, test_robot, test_tablet, reset, record_home"""
-    d: bool = False
+    debug: bool = False
     """Debug mode"""
 
 class Camera:
@@ -254,28 +254,28 @@ class Tablet:
             logger.error("Tablet test failed - no device found")
 
 def main(args: Args) -> None:
-    if args.d:
+    if args.debug:
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled")
-    if args.c == "test":
+    if args.cmd == "test":
         logger.info("Running all hardware tests...")
         Camera.test()
         Robot.test()
         Tablet.test()
-    elif args.c == "test_camera":
+    elif args.cmd == "test_camera":
         Camera.test()
-    elif args.c == "test_robot":
+    elif args.cmd == "test_robot":
         Robot.test()
-    elif args.c == "test_tablet":
+    elif args.cmd == "test_tablet":
         Tablet.test()
-    elif args.c == "reset_robot":
+    elif args.cmd == "reset_robot":
         robot = Robot()
         robot.reset()
-    elif args.c == "record_home":
+    elif args.cmd == "record_home":
         robot = Robot()
         robot.record_home()
     else:
-        logger.error(f"Unknown command: {args.c}")
+        logger.error(f"Unknown command: {args.cmd}")
         logger.info("Available commands: test, test_camera, test_robot, test_tablet, reset_robot, record_home")
 
 if __name__ == "__main__":
