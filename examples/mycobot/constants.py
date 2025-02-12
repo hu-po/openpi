@@ -5,24 +5,14 @@ from typing import Callable, Tuple
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Hardware configuration
-DEFAULT_PORT: str = "/dev/ttyAMA0"
-DEFAULT_BAUDRATE: int = 1000000
-DEFAULT_CAMERA_ID: int = 0
-DEFAULT_SPEED: int = 50  # Default movement speed (percentage)
-
 # Time step for control loop
 DT: float = 0.02  # 50Hz
 
-# Camera sizes
-IMAGE_HEIGHT: int = 224
-IMAGE_WIDTH: int = 224
-
-# Tablet configuration
-DEFAULT_TABLET_DEVICE: str = "Wacom Intuos Pro L Pen"
-DEFAULT_CANVAS_SIZE: Tuple[int, int] = (1024, 1024)
-DEFAULT_MAX_STEPS: int = 1000
-DEFAULT_CAPTURE_DURATION: float = 5.0
+# Robot settings
+ROBOT_PORT: str = "/dev/ttyAMA0"
+ROBOT_BAUDRATE: int = 1000000
+ROBOT_SPEED: int = 80  # Default movement speed (percentage)
+ROBOT_MOVE_TIMEOUT: int = 6  # seconds
 
 # Joint names and default positions
 JOINT_NAMES: list[str] = [
@@ -60,3 +50,14 @@ def unnormalize_joint_position(x: float, joint_name: str) -> float:
 # Type aliases for normalize/unnormalize functions
 JOINT_POSITION_NORMALIZE_FN: Callable[[float, str], float] = normalize_joint_position
 JOINT_POSITION_UNNORMALIZE_FN: Callable[[float, str], float] = unnormalize_joint_position
+
+# Camera settings
+CAMERA_ID: int = 0
+CAMERA_IMAGE_HEIGHT: int = 224
+CAMERA_IMAGE_WIDTH: int = 224
+
+# Tablet configuration
+DEFAULT_TABLET_DEVICE: str = "Wacom Intuos Pro L Pen"
+DEFAULT_CANVAS_SIZE: Tuple[int, int] = (1024, 1024)
+DEFAULT_MAX_STEPS: int = 1000
+DEFAULT_CAPTURE_DURATION: float = 5.0

@@ -27,7 +27,7 @@ class Args:
 class Camera:
     def __init__(
         self,
-        camera_id: int = _c.DEFAULT_CAMERA_ID
+        camera_id: int = _c.CAMERA_ID
     ) -> None:
         self._cam = cv2.VideoCapture(camera_id)
         if not self._cam.isOpened():
@@ -38,7 +38,7 @@ class Camera:
         ret, frame = self._cam.read()
         if not ret:
             logger.warning("Failed to read frame; returning blank frame")
-            frame = np.zeros((_c.IMAGE_HEIGHT, _c.IMAGE_WIDTH, 3), dtype=np.uint8)
+            frame = np.zeros((_c.CAMERA_IMAGE_HEIGHT, _c.CAMERA_IMAGE_WIDTH, 3), dtype=np.uint8)
         return ret, frame
 
     def release(self) -> None:
@@ -55,8 +55,8 @@ def test_camera() -> None:
 class Robot:
     def __init__(
         self,
-        port: str = _c.DEFAULT_PORT,
-        baudrate: int = _c.DEFAULT_BAUDRATE
+        port: str = _c.ROBOT_PORT,
+        baudrate: int = _c.ROBOT_BAUDRATE
     ) -> None:
         self._robot = MyCobot(port=port, baudrate=baudrate)
         self._robot.set_color(0, 255, 0)
@@ -65,19 +65,19 @@ class Robot:
     def get_angles(self) -> List[float]:
         return self._robot.get_angles()
 
-    def send_angles(self, angles: List[float], speed: Union[int, float] = _c.DEFAULT_SPEED) -> None:
+    def send_angles(self, angles: List[float], speed: Union[int, float] = _c.ROBOT_SPEED) -> None:
         self._robot.send_angles(angles, speed)
 
     def go_home(self) -> None:
         logger.info("Moving to home position...")
-        self._robot.send_angles(_c.HOME_POSITION, _c.DEFAULT_SPEED)
+        self._robot.sync_send_angles(_c.HOME_POSITION, _c.ROBOT_SPEED, timeout=_c.ROBOT_MOVE_TIMEOUT)
         self._robot.set_color(0, 0, 255)
         time.sleep(2)
         logger.info("Done")
 
     def go_sleep(self) -> None:
         logger.info("Moving to sleep position...")
-        self._robot.send_angles(_c.SLEEP_POSITION, _c.DEFAULT_SPEED)
+        self._robot.send_angles(_c.SLEEP_POSITION, _c.ROBOT_SPEED)
         time.sleep(3)
         logger.info("Releasing servos...")
         self._robot.release_all_servos()
@@ -86,7 +86,7 @@ class Robot:
     def __del__(self) -> None:
         logger.info("Terminating Robot")
         self.go_sleep()
-        self._robot.set_color(255, 0, 0)
+        self._robot.set_color(0, 0, 0)
 
 def calibrate() -> None:
     robot = Robot()

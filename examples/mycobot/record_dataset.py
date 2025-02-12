@@ -35,7 +35,7 @@ def create_empty_dataset(repo_id: str, dataset_config: DatasetConfig) -> LeRobot
         },
         "observation.images.camera": {
             "dtype": "image",
-            "shape": (3, _c.IMAGE_HEIGHT, _c.IMAGE_WIDTH),
+            "shape": (3, _c.CAMERA_IMAGE_HEIGHT, _c.CAMERA_IMAGE_WIDTH),
             "names": ["channels", "height", "width"],
         }
     }
@@ -71,9 +71,9 @@ def record_episode(env: MyCobotEnv, dataset: LeRobotDataset, max_steps: int) -> 
 class Args:
     base_repo_id: str = 'hu-po/mycobot'
     task: str = "DEBUG"
-    port: str = _c.DEFAULT_PORT
-    baudrate: int = _c.DEFAULT_BAUDRATE
-    camera_id: int = _c.DEFAULT_CAMERA_ID
+    port: str = _c.ROBOT_PORT
+    baudrate: int = _c.ROBOT_BAUDRATE
+    camera_id: int = _c.CAMERA_ID
     push_to_hub: bool = True
     max_episode_steps: int = 500
 

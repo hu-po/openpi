@@ -18,7 +18,7 @@ class MyCobotEnv(_environment.Environment):
         self.camera = _hw.Camera()
         self.tablet = _hw.Tablet()
         self.action_space = action_space
-        self._render_height = _c.IMAGE_HEIGHT
+        self._render_height = _c.CAMERA_IMAGE_HEIGHT
         self._render_width = _c.IMAGE_WIDT
         self._ts = None
         self.reset()
@@ -42,7 +42,7 @@ class MyCobotEnv(_environment.Environment):
         ret, frame = self.camera.read()
         if not ret:
             logger.warning("Failed to get camera frame")
-            frame = np.zeros((_c.IMAGE_HEIGHT, _c.IMAGE_WIDTH, 3), dtype=np.uint8)
+            frame = np.zeros((_c.CAMERA_IMAGE_HEIGHT, _c.CAMERA_IMAGE_WIDTH, 3), dtype=np.uint8)
         frame = image_tools.convert_to_uint8(image_tools.resize_with_pad(frame, self._render_height, self._render_width))
         frame = np.transpose(frame, (2, 0, 1))
         return {"state": normalized_joints, "images": {"cam_main": frame}}
