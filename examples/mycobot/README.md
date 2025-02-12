@@ -23,6 +23,15 @@ try to not leave the robot in this state, reset the robot (release servos) if yo
 PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/hardware.py --cmd release
 ```
 
+calibrate the robot, this will put the robot in a floppy mode.
+use your hands to move the robot around the edges of the workspace.
+use space bar to record positions, this will define joint limits.
+
+```bash
+PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/hardware.py --cmd calibrate
+```
+
+copy paste the output of the calibrate command into the `constants.py` file.
 
 
 plug in a usb camera to the robot computer, verify it is available:

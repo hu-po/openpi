@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Args:
-    cmd: str = "release"
-    """Command to run (i.e. test, test_camera, test_robot, test_tablet, release, calibrate"""
+    cmd: str = "sleep"
+    """Command to run (i.e. test, test_camera, test_robot, test_tablet, sleep, calibrate"""
     debug: bool = False
     """Debug mode"""
 
@@ -81,15 +81,9 @@ class Robot:
         self._robot.release_all_servos()
         logger.info("Done")
 
-    def release(self) -> None:
-        self.go_sleep()
-        logger.info("Releasing servos...")
-        self._robot.release_all_servos()
-        logger.info("Done")
-
     def __del__(self) -> None:
         logger.info("Terminating Robot")
-        self.release()
+        self.go_sleep()
 
 def calibrate() -> None:
     robot = Robot()
@@ -97,7 +91,7 @@ def calibrate() -> None:
     logger.info("Recording up to 10 positions")
     logger.info("Move robot and press SPACE to record each position")
     logger.info("Press q to finish recording")
-    robot.release_all_servos()
+    robot._robot.release_all_servos() # floppy mode
     
     class Raw:
         def __init__(self, stream):
@@ -128,16 +122,18 @@ def calibrate() -> None:
 
     logger.info("\nRecorded positions:")
     for i, pos in enumerate(positions, 1):
-        pos_info = [f"{name}={angle:.2f}" for name, angle in zip(_c.JOINT_NAMES, pos)]
-        logger.info(f"Position {i}: {', '.join(pos_info)}")
+        pos_str = f"[{', '.join(f'{angle:.2f}' for angle in pos)}]"
+        logger.info(f"Position {i}: {pos_str}")
 
     positions_array = np.array(positions)
     min_angles = positions_array.min(axis=0)
     max_angles = positions_array.max(axis=0)
     
-    logger.info("\nJoint ranges:")
+    logger.info("\nJoint limits for constants.py:")
+    logger.info("JOINT_LIMITS: dict[str, tuple[float, float]] = {")
     for name, min_ang, max_ang in zip(_c.JOINT_NAMES, min_angles, max_angles):
-        logger.info(f"{name}: min={min_ang:.2f}, max={max_ang:.2f}, range={max_ang-min_ang:.2f}")
+        logger.info(f'    "{name}": ({min_ang:.2f}, {max_ang:.2f}),')
+    logger.info("}")
 
 def test_robot() -> None:
     robot = Robot()
@@ -289,14 +285,14 @@ def main(args: Args) -> None:
         test_robot()
     elif args.cmd == "test_tablet":
         test_tablet()
-    elif args.cmd == "release":
+    elif args.cmd == "sleep":
         robot = Robot()
-        robot.release()
+        del robot
     elif args.cmd == "calibrate":
         calibrate()
     else:
         logger.error(f"Unknown command: {args.cmd}")
-        logger.info("Available commands: test, test_camera, test_robot, test_tablet, release, calibrate")
+        logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, force=True)
