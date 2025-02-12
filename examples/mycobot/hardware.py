@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 
 @dataclasses.dataclass
 class Args:
-    command: str = tyro.cli.arg(
+    command: str = tyro.conf.arg(
         name="command", 
         aliases=["-c"], 
         default=tyro.MISSING,
         help="Available commands: test, test_camera, test_robot, test_tablet, reset_robot, record_home"
     )
-    debug: bool = tyro.cli.arg(name="debug", aliases=["-d"], default=False)
+    debug: bool = tyro.conf.arg(name="debug", aliases=["-d"], default=False)
 
 class Camera:
     def __init__(
