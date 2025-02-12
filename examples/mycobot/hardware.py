@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Args:
-    cmd: str = "sleep"
-    """Command to run (i.e. test, test_camera, test_robot, test_tablet, sleep, calibrate"""
+    cmd: str = "test"
+    """Command to run (i.e. test, test_camera, test_robot, test_tablet, sleep, calibrate, scribble)"""
     debug: bool = False
     """Debug mode"""
 
@@ -148,6 +148,27 @@ def scribble() -> None:
     robot.go_home()
     coords = robot._robot.get_coords()
     logger.info(f"Coords: {coords}")
+    # move +10mm in x direction
+    robot._robot.send_coord(1, coords[0] + 10, _c.ROBOT_SPEED)
+    time.sleep(0.1)
+    coords = robot._robot.get_coords()
+    logger.info(f"Coords: {coords}")
+    # move +10mm in y direction
+    robot._robot.send_coord(2, coords[1] + 10, _c.ROBOT_SPEED)
+    time.sleep(0.1)
+    coords = robot._robot.get_coords()
+    logger.info(f"Coords: {coords}")
+    # move -10mm in x direction
+    robot._robot.send_coord(1, coords[0] - 10, _c.ROBOT_SPEED)
+    time.sleep(0.1)
+    coords = robot._robot.get_coords()
+    logger.info(f"Coords: {coords}")
+    # move -10mm in y direction
+    robot._robot.send_coord(2, coords[1] - 10, _c.ROBOT_SPEED)
+    time.sleep(0.1)
+    coords = robot._robot.get_coords()
+    logger.info(f"Coords: {coords}")
+
 
 class Tablet:
     def __init__(self,
@@ -292,9 +313,11 @@ def main(args: Args) -> None:
         del robot
     elif args.cmd == "calibrate":
         calibrate()
+    elif args.cmd == "scribble":
+        scribble()
     else:
         logger.error(f"Unknown command: {args.cmd}")
-        logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate")
+        logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate, scribble")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, force=True)
