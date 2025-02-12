@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from typing import Callable
+from typing import Callable, Tuple
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -9,13 +9,20 @@ logger = logging.getLogger(__name__)
 DEFAULT_PORT: str = "/dev/ttyAMA0"
 DEFAULT_BAUDRATE: int = 1000000
 DEFAULT_CAMERA_ID: int = 0
+DEFAULT_SPEED: int = 50  # Default movement speed (percentage)
 
 # Time step for control loop
 DT: float = 0.02  # 50Hz
 
-# camera sizes
+# Camera sizes
 IMAGE_HEIGHT: int = 224
 IMAGE_WIDTH: int = 224
+
+# Tablet configuration
+DEFAULT_TABLET_DEVICE: str = "Wacom Intuos Pro L Pen"
+DEFAULT_CANVAS_SIZE: Tuple[int, int] = (1024, 1024)
+DEFAULT_MAX_STEPS: int = 1000
+DEFAULT_CAPTURE_DURATION: float = 5.0
 
 # Joint names and default positions
 JOINT_NAMES: list[str] = [
