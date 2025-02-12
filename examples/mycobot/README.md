@@ -10,7 +10,18 @@ each episode consists of some maximum number of robot steps.
 
 ### Ubuntu PC (policy server)
 
-### MyCobot280pi (robot computer)
+###  (robot computer)
+
+the robot computer is the raspberry pi attached to the MyCobot280pi
+
+`Linux er 5.4.0-1073-raspi aarch64 GNU/Linux`
+
+this is a cheap robot, so when the servos are active they will produce a high pitched noise.
+try to not leave the robot in this state, reset the robot (release servos) if you aren't using it.
+
+```bash
+PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/reset_robot.py
+```
 
 plug in a usb camera to the robot computer, verify it is available:
 
@@ -18,16 +29,7 @@ plug in a usb camera to the robot computer, verify it is available:
 ls /dev/video*
 ```
 
-this is a cheap robot, so when the servos are active they will produce a high pitched noise.
-do not leave the robot in this state, amke sure to reset the robot (release servos) if you aren't using it.
-
-```bash
-PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/reset_robot.py
-```
-
-### Wacom Intuos Pro
-
-plug in the tablet via usb-c to the policy server, verify it is available:
+plug in the tablet via usb-c to the robot computer, verify it is available:
 
 ```bash
 ls /dev/input/
