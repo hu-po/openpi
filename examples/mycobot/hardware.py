@@ -70,9 +70,9 @@ class Robot:
 
     def go_home(self) -> None:
         logger.info("Moving to home position...")
+        self._robot.set_color(255, 255, 0)
         self._robot.sync_send_angles(_c.HOME_POSITION, _c.ROBOT_SPEED, timeout=_c.ROBOT_MOVE_TIMEOUT)
-        self._robot.set_color(0, 0, 255)
-        time.sleep(2)
+        self._robot.set_color(0, 255, 0)
         logger.info("Done")
 
     def go_sleep(self) -> None:
@@ -142,6 +142,12 @@ def test_robot() -> None:
     robot = Robot()
     robot.go_home()
     logger.info("Robot test complete")
+
+def scribble() -> None:
+    robot = Robot()
+    robot.go_home()
+    coords = robot._robot.get_coords()
+    logger.info(f"Coords: {coords}")
 
 class Tablet:
     def __init__(self,
