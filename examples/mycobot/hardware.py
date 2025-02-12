@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Args:
     cmd: str = "reset"
-    """Command to run (i.e. test, test_camera, test_robot, test_tablet, reset, record_home"""
+    """Command to run (i.e. test, test_camera, test_robot, test_tablet, reset, calibrate"""
     debug: bool = False
     """Debug mode"""
 
@@ -44,14 +44,13 @@ class Camera:
     def release(self) -> None:
         self._cam.release()
 
-    @staticmethod
-    def test() -> None:
-        camera = Camera()
-        ret, frame = camera.read()
-        logger.info(f"Camera test - frame shape: {frame.shape}")
-        cv2.imwrite('camera_test.png', frame)
-        logger.info("Saved test frame to camera_test.png")
-        camera.release()
+def test_camera() -> None:
+    camera = Camera()
+    ret, frame = camera.read()
+    logger.info(f"Camera test - frame shape: {frame.shape}")
+    cv2.imwrite('camera_test.png', frame)
+    logger.info("Saved test frame to camera_test.png")
+    camera.release()
 
 class Robot:
     def __init__(
@@ -59,75 +58,98 @@ class Robot:
         port: str = _c.DEFAULT_PORT,
         baudrate: int = _c.DEFAULT_BAUDRATE
     ) -> None:
-        self._robot = MyCobot(
-            port=port,
-            baudrate=baudrate
-        )
+        self._robot = MyCobot(port=port, baudrate=baudrate)
         logger.info("MyCobotRobot initialized")
-
-    def send_angles(self, angles: List[float], speed: Union[int, float]) -> None:
-        self._robot.send_angles(angles, speed)
 
     def get_angles(self) -> List[float]:
         return self._robot.get_angles()
 
-    def release_all_servos(self) -> None:
-        self._robot.release_all_servos()
+    def send_angles(self, angles: List[float], speed: Union[int, float] = _c.DEFAULT_SPEED) -> None:
+        self._robot.send_angles(angles, speed)
 
-    def reset(self) -> None:
+    def go_home(self) -> None:
         logger.info("Moving to home position...")
-        self.send_angles(_c.HOME_POSITION, _c.DEFAULT_SPEED)
-        time.sleep(3)
-        logger.info("Releasing servos...")
-        self.release_all_servos()
+        self._robot.send_angles(_c.HOME_POSITION, _c.DEFAULT_SPEED)
+        time.sleep(2)
         logger.info("Done")
 
-    def record_home(self) -> None:
-        logger.info("Recording home position")
-        logger.info("Move robot to home position and press SPACE")
-        logger.info("Press q to quit at any time")
-        self.release_all_servos()
-        
-        class Raw:
-            def __init__(self, stream):
-                self.stream = stream
-                self.fd = self.stream.fileno()
-            def __enter__(self):
-                self.original_stty = termios.tcgetattr(self.fd)
-                tty.setraw(self.fd)
-            def __exit__(self, type_, value, traceback):
-                termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
+    def go_sleep(self) -> None:
+        logger.info("Moving to sleep position...")
+        self._robot.send_angles(_c.SLEEP_POSITION, _c.DEFAULT_SPEED)
+        time.sleep(3)
+        logger.info("Releasing servos...")
+        self._robot.release_all_servos()
+        logger.info("Done")
 
-        while True:
-            with Raw(sys.stdin):
-                key = sys.stdin.read(1)
-                if key == "q":
-                    logger.info("Recording cancelled")
-                    return
-                elif key == " ":
-                    angles = self.get_angles()
-                    if angles:
-                        logger.info(f"Recorded home position: {angles}")
-                        logger.info("\nHome position recorded. Copy this into your constants.py:")
-                        logger.info("HOME_POSITION = [")
-                        logger.info(f"    {angles},")
-                        logger.info("]")
-                        return
-                    else:
-                        logger.warning("Failed to get angles, try again")
+    def release(self) -> None:
+        self.go_sleep()
+        logger.info("Releasing servos...")
+        self._robot.release_all_servos()
+        logger.info("Done")
 
-    @staticmethod
-    def test() -> None:
-        robot = Robot()
-        current_angles = robot.get_angles()
-        logger.info(f"Robot test - current angles: {current_angles}")
-        if current_angles:
-            new_angles = [a + 10 for a in current_angles]
-            robot.send_angles(new_angles, _c.DEFAULT_SPEED)
-            time.sleep(2)
-            robot.send_angles(current_angles, _c.DEFAULT_SPEED)
-        robot.release_all_servos()
-        logger.info("Robot test complete")
+    def __del__(self) -> None:
+        logger.info("Terminating Robot")
+        self.release()
+
+def calibrate() -> None:
+    robot = Robot()
+    positions: List[List[float]] = []
+    logger.info("Recording up to 10 positions")
+    logger.info("Move robot and press SPACE to record each position")
+    logger.info("Press q to finish recording")
+    robot.release_all_servos()
+    
+    class Raw:
+        def __init__(self, stream):
+            self.stream = stream
+            self.fd = self.stream.fileno()
+        def __enter__(self):
+            self.original_stty = termios.tcgetattr(self.fd)
+            tty.setraw(self.fd)
+        def __exit__(self, type_, value, traceback):
+            termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
+
+    while len(positions) < 10:
+        with Raw(sys.stdin):
+            key = sys.stdin.read(1)
+            if key == "q":
+                break
+            elif key == " ":
+                angles = robot.get_angles()
+                if angles:
+                    positions.append(angles)
+                    logger.info(f"Position {len(positions)} recorded: {angles}")
+                else:
+                    logger.warning("Failed to get angles, try again")
+
+    if not positions:
+        logger.info("No positions recorded")
+        return
+
+    logger.info("\nRecorded positions:")
+    for i, pos in enumerate(positions, 1):
+        pos_info = [f"{name}={angle:.2f}" for name, angle in zip(_c.JOINT_NAMES, pos)]
+        logger.info(f"Position {i}: {', '.join(pos_info)}")
+
+    positions_array = np.array(positions)
+    min_angles = positions_array.min(axis=0)
+    max_angles = positions_array.max(axis=0)
+    
+    logger.info("\nJoint ranges:")
+    for name, min_ang, max_ang in zip(_c.JOINT_NAMES, min_angles, max_angles):
+        logger.info(f"{name}: min={min_ang:.2f}, max={max_ang:.2f}, range={max_ang-min_ang:.2f}")
+
+def test_robot() -> None:
+    robot = Robot()
+    current_angles = robot.get_angles()
+    logger.info(f"Robot test - current angles: {current_angles}")
+    if current_angles:
+        new_angles = [a + 10 for a in current_angles]
+        robot.send_angles(new_angles, _c.DEFAULT_SPEED)
+        time.sleep(2)
+        robot.send_angles(current_angles, _c.DEFAULT_SPEED)
+    robot.release_all_servos()
+    logger.info("Robot test complete")
 
 class Tablet:
     def __init__(self,
@@ -243,15 +265,14 @@ class Tablet:
         plt.imsave('tablet_output.png', self.buffer, cmap='Greys')
         logger.info("Saved output to tablet_output.png")
 
-    @staticmethod
-    def test() -> None:
-        tablet = Tablet()
-        if tablet.device:
-            logger.info("Starting tablet capture for 5 seconds...")
-            tablet.capture(duration=5.0)
-            logger.info("Tablet test complete - check tablet_output.png")
-        else:
-            logger.error("Tablet test failed - no device found")
+def test_tablet() -> None:
+    tablet = Tablet()
+    if tablet.device:
+        logger.info("Starting tablet capture for 5 seconds...")
+        tablet.capture(duration=5.0)
+        logger.info("Tablet test complete - check tablet_output.png")
+    else:
+        logger.error("Tablet test failed - no device found")
 
 def main(args: Args) -> None:
     if args.debug:
@@ -259,24 +280,23 @@ def main(args: Args) -> None:
         logger.debug("Debug mode enabled")
     if args.cmd == "test":
         logger.info("Running all hardware tests...")
-        Camera.test()
-        Robot.test()
-        Tablet.test()
+        test_camera()
+        test_robot()
+        test_tablet()
     elif args.cmd == "test_camera":
-        Camera.test()
+        test_camera()
     elif args.cmd == "test_robot":
-        Robot.test()
+        test_robot()
     elif args.cmd == "test_tablet":
-        Tablet.test()
-    elif args.cmd == "reset_robot":
+        test_tablet()
+    elif args.cmd == "release":
         robot = Robot()
-        robot.reset()
-    elif args.cmd == "record_home":
-        robot = Robot()
-        robot.record_home()
+        robot.release()
+    elif args.cmd == "calibrate":
+        calibrate()
     else:
         logger.error(f"Unknown command: {args.cmd}")
-        logger.info("Available commands: test, test_camera, test_robot, test_tablet, reset_robot, record_home")
+        logger.info("Available commands: test, test_camera, test_robot, test_tablet, release, calibrate")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, force=True)

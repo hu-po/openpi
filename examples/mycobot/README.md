@@ -20,13 +20,21 @@ this is a cheap robot, so when the servos are active they will produce a high pi
 try to not leave the robot in this state, reset the robot (release servos) if you aren't using it.
 
 ```bash
-uv run examples/mycobot/hardware.py -c release
+PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/hardware.py --cmd release
 ```
+
+
 
 plug in a usb camera to the robot computer, verify it is available:
 
 ```bash
 ls /dev/video*
+```
+
+run the camera test
+
+```bash
+PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/hardware.py --cmd test_camera --debug
 ```
 
 plug in the tablet via usb-c to the robot computer, verify it is available:
@@ -44,6 +52,13 @@ you will need to modify permissions to access the tablet:
 sudo usermod -a -G input $USER
 newgrp input
 ```
+
+run the tablet test
+
+```bash
+PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/hardware.py --cmd test_tablet --debug
+```
+
 
 ## Record Baseline Dataset
 
