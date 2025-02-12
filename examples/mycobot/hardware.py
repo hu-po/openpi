@@ -31,8 +31,8 @@ class Camera:
     ) -> None:
         self._cam = cv2.VideoCapture(camera_id)
         if not self._cam.isOpened():
-            logger.warning("Camera failed to open; fallback to blank frames")
-        logger.info("MyCobotCamera initialized")
+            logger.warning("🚫 Camera failed to open; fallback to blank frames")
+        logger.info("📸 MyCobotCamera initialized")
 
     def read(self) -> Tuple[bool, np.ndarray]:
         ret, frame = self._cam.read()
@@ -59,7 +59,8 @@ class Robot:
         baudrate: int = _c.DEFAULT_BAUDRATE
     ) -> None:
         self._robot = MyCobot(port=port, baudrate=baudrate)
-        logger.info("MyCobotRobot initialized")
+        self._robot.set_color(0, 255, 0)
+        logger.info("🤖 MyCobotRobot initialized")
 
     def get_angles(self) -> List[float]:
         return self._robot.get_angles()
@@ -70,6 +71,7 @@ class Robot:
     def go_home(self) -> None:
         logger.info("Moving to home position...")
         self._robot.send_angles(_c.HOME_POSITION, _c.DEFAULT_SPEED)
+        self._robot.set_color(0, 0, 255)
         time.sleep(2)
         logger.info("Done")
 
@@ -84,6 +86,7 @@ class Robot:
     def __del__(self) -> None:
         logger.info("Terminating Robot")
         self.go_sleep()
+        self._robot.set_color(255, 0, 0)
 
 def calibrate() -> None:
     robot = Robot()
@@ -137,14 +140,7 @@ def calibrate() -> None:
 
 def test_robot() -> None:
     robot = Robot()
-    current_angles = robot.get_angles()
-    logger.info(f"Robot test - current angles: {current_angles}")
-    if current_angles:
-        new_angles = [a + 10 for a in current_angles]
-        robot.send_angles(new_angles, _c.DEFAULT_SPEED)
-        time.sleep(2)
-        robot.send_angles(current_angles, _c.DEFAULT_SPEED)
-    robot.release_all_servos()
+    robot.go_home()
     logger.info("Robot test complete")
 
 class Tablet:
@@ -169,7 +165,7 @@ class Tablet:
                 dev = evdev.InputDevice(path)
                 if device_name in dev.name:
                     self.device = dev
-                    logger.info(f"Connected to {dev.name} at {dev.path}")
+                    logger.info(f"✏️ Connected to {dev.name} at {dev.path}")
                     break
             except (PermissionError, OSError) as e:
                 logger.error(f"Permission denied for device {path}: {e}")
