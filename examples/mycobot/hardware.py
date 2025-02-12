@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Args:
-    cmd: str = "reset"
-    """Command to run (i.e. test, test_camera, test_robot, test_tablet, reset, calibrate"""
+    cmd: str = "release"
+    """Command to run (i.e. test, test_camera, test_robot, test_tablet, release, calibrate"""
     debug: bool = False
     """Debug mode"""
 
