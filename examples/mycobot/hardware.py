@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class Args:
     cmd: str = "test"
-    """Command to run (i.e. test, test_camera, test_robot, test_tablet, sleep, calibrate, scribble)"""
+    """Command to run (i.e. test, test_camera, test_robot, test_tablet, sleep, calibrate, calibrate_zero, square)"""
     debug: bool = False
     """Debug mode"""
 
@@ -88,6 +88,11 @@ class Robot:
         self.go_sleep()
         self._robot.set_color(0, 0, 0)
 
+def test_robot() -> None:
+    robot = Robot()
+    robot.go_home()
+    logger.info("Robot test complete")
+
 def calibrate() -> None:
     robot = Robot()
     positions: List[List[float]] = []
@@ -138,12 +143,43 @@ def calibrate() -> None:
         logger.info(f'    "{name}": ({min_ang:.2f}, {max_ang:.2f}),')
     logger.info("}")
 
-def test_robot() -> None:
+def calibrate_zero() -> None:
     robot = Robot()
-    robot.go_home()
-    logger.info("Robot test complete")
+    logger.info("Starting zero-point calibration for all servos")
+    logger.info("Move each joint to desired zero position and press SPACE")
+    logger.info("Press q to exit calibration")
+    robot._robot.release_all_servos()  # floppy mode
+    
+    class Raw:
+        def __init__(self, stream):
+            self.stream = stream
+            self.fd = self.stream.fileno()
+        def __enter__(self):
+            self.original_stty = termios.tcgetattr(self.fd)
+            tty.setraw(self.fd)
+        def __exit__(self, type_, value, traceback):
+            termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
 
-def scribble() -> None:
+    for servo_id in range(1, 7):
+        logger.info(f"\nCalibrating servo {servo_id} ({_c.JOINT_NAMES[servo_id-1]})")
+        while True:
+            with Raw(sys.stdin):
+                key = sys.stdin.read(1)
+                if key == "q":
+                    logger.info("Calibration aborted")
+                    return
+                elif key == " ":
+                    try:
+                        robot._robot.set_servo_calibration(servo_id)
+                        logger.info(f"Zero point set for servo {servo_id}")
+                        break
+                    except Exception as e:
+                        logger.error(f"Failed to calibrate servo {servo_id}: {e}")
+                        continue
+
+    logger.info("\nCalibration complete for all servos")
+
+def square() -> None:
     robot = Robot()
     robot.go_home()
     coords = robot._robot.get_coords()
@@ -168,6 +204,39 @@ def scribble() -> None:
     time.sleep(0.1)
     coords = robot._robot.get_coords()
     logger.info(f"Coords: {coords}")
+
+def spiral(waypoints: int = 100, max_radius: float = 50.0) -> None:
+    """Draw a spiral pattern starting from home position.
+    
+    Args:
+        waypoints: Number of points to use for spiral (default: 100)
+        max_radius: Maximum radius of spiral in mm (default: 50.0)
+    """
+    robot = Robot()
+    robot.go_home()
+    coords = robot._robot.get_coords()
+    logger.info(f"Starting spiral from coords: {coords}")
+    
+    for i in range(waypoints):
+        # Calculate angle and radius for this point
+        theta = i * 4 * np.pi / waypoints
+        radius = (i / waypoints) * max_radius
+        
+        # Calculate x,y offset using parametric equations
+        x_offset = radius * np.cos(theta)
+        y_offset = radius * np.sin(theta)
+        
+        # Move to new position
+        robot._robot.send_coord(1, coords[0] + x_offset, _c.ROBOT_SPEED)
+        robot._robot.send_coord(2, coords[1] + y_offset, _c.ROBOT_SPEED)
+        time.sleep(0.1)
+        
+        # Log current position
+        new_coords = robot._robot.get_coords()
+        logger.info(f"Spiral point {i+1}/{waypoints}: {new_coords}")
+    
+    # Return to start position
+    robot.go_home()
 
 
 class Tablet:
@@ -313,11 +382,15 @@ def main(args: Args) -> None:
         del robot
     elif args.cmd == "calibrate":
         calibrate()
-    elif args.cmd == "scribble":
-        scribble()
+    elif args.cmd == "calibrate_zero":
+        calibrate_zero()
+    elif args.cmd == "square":
+        square()
+    elif args.cmd == "spiral":
+        spiral()
     else:
         logger.error(f"Unknown command: {args.cmd}")
-        logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate, scribble")
+        logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate, calibrate_zero, square, spiral")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, force=True)
