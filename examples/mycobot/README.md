@@ -1,11 +1,10 @@
 # MyCobot Drawing
 
-This task uses a MyCobot280pi 6-DOF robot arm to draw on a Wacom Intuos Pro tablet.
-
-The goal is to draw a target black and white image.
-Target images are generated.
-The reward is the L2 distance between the robot's drawing and the target image.
-Each episode consists of some maximum number of robot steps.
+this task uses a MyCobot280pi 6-DOF robot arm to draw on a Wacom Intuos Pro tablet.
+the goal is to draw a target black and white image.
+target images are generated.
+the reward is the L2 distance between the robot's drawing and the target image.
+each episode consists of some maximum number of robot steps.
 
 ## Setup
 
@@ -28,7 +27,7 @@ PYTHONPATH=$PYTHONPATH:. uv run examples/mycobot/reset_robot.py
 
 ### Wacom Intuos Pro
 
-Plug in the tablet via usb-c to the policy server, verify it is available:
+plug in the tablet via usb-c to the policy server, verify it is available:
 
 ```bash
 ls /dev/input/
@@ -67,6 +66,10 @@ calculate norm stats:
 uv run examples/mycobot/calculate_norm_stats.py --repo-id oop/mycobot-dataset
 ```
 
+## Finetune
+
+to finetune the pi0 base policy
+
 ## Inference
 
 on policy server
@@ -80,3 +83,13 @@ on robot computer
 ```bash
 uv run examples/mcb/main.py
 ```
+
+## Development
+
+development is being done on a branch of openpi:
+
+https://github.com/hu-po/openpi
+
+to see the latest changes:
+
+https://github.com/Physical-Intelligence/openpi/compare/main...hu-po:openpi:main

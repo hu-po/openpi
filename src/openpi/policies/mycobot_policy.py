@@ -13,15 +13,15 @@ class MyCobotInputs(transforms.DataTransformFn):
     
     Expected inputs:
     - images: dict[name, img] where img is [channel, height, width]. name must be in EXPECTED_CAMERAS.
-    - state: [7] (6 joints + 1 gripper)
-    - actions: [action_horizon, 7]
+    - state: [6] (6 joints for MyCobot 280pi)
+    - actions: [action_horizon, 6]
     """
     action_dim: int
     adapt_to_pi: bool = True
     EXPECTED_CAMERAS: ClassVar[tuple[str, ...]] = ("cam_main",)
 
     def __call__(self, data: dict) -> dict:
-        # Get the state. We are padding from 7 to the model action dim
+        # Get the state. We are padding from 6 to the model action dim
         state = transforms.pad_to_dim(data["state"], self.action_dim)
 
         in_images = data["images"]
@@ -55,14 +55,14 @@ class MyCobotOutputs(transforms.DataTransformFn):
     adapt_to_pi: bool = True
 
     def __call__(self, data: dict) -> dict:
-        # Only return the first 7 dims (6 joints + gripper)
-        actions = np.asarray(data["actions"][:, :7])
+        # Only return the first 6 dims (6 joints)
+        actions = np.asarray(data["actions"][:, :6])
         return {"actions": actions}
 
 def make_mycobot_example() -> dict:
     """Creates a random input example for the MyCobot policy."""
     return {
-        "state": np.ones((7,)),
+        "state": np.ones((6,)),
         "images": {
             "cam_main": np.random.randint(256, size=(3, 224, 224), dtype=np.uint8),
         },
