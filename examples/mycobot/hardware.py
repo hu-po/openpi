@@ -179,33 +179,41 @@ def calibrate_zero() -> None:
 
     logger.info("\nCalibration complete for all servos")
 
-def square() -> None:
+def square(distance: float = 10.0, speed: int = _c.ROBOT_SPEED) -> None:
+    """Draw a square pattern in 3D space starting from home position.
+    
+    Args:
+        distance: Distance in mm for each movement (default: 10.0)
+        speed: Movement speed (default: ROBOT_SPEED from constants)
+        
+    Note: Valid coordinate ranges from docs:
+        x: -281.45 ~ 281.45 mm
+        y: -281.45 ~ 281.45 mm
+        z: -70 ~ 412.67 mm
+    """
     robot = Robot()
     robot.go_home()
+    
+    # Get starting coordinates
     coords = robot._robot.get_coords()
-    logger.info(f"Coords: {coords}")
-    # move +10mm in x direction
-    robot._robot.send_coord(1, coords[0] + 10, _c.ROBOT_SPEED)
-    time.sleep(0.1)
-    coords = robot._robot.get_coords()
-    logger.info(f"Coords: {coords}")
-    # move +10mm in y direction
-    robot._robot.send_coord(2, coords[1] + 10, _c.ROBOT_SPEED)
-    time.sleep(0.1)
-    coords = robot._robot.get_coords()
-    logger.info(f"Coords: {coords}")
-    # move -10mm in x direction
-    robot._robot.send_coord(1, coords[0] - 10, _c.ROBOT_SPEED)
-    time.sleep(0.1)
-    coords = robot._robot.get_coords()
-    logger.info(f"Coords: {coords}")
-    # move -10mm in y direction
-    robot._robot.send_coord(2, coords[1] - 10, _c.ROBOT_SPEED)
-    time.sleep(0.1)
-    coords = robot._robot.get_coords()
-    logger.info(f"Coords: {coords}")
+    logger.info(f"Starting square movement from coords: {coords}")
+    
+    # Using sync_send_coord for more precise movements
+    # Move in positive directions
+    for axis in [1, 2, 3]:
+        logger.info(f"Moving +{distance}mm along axis {axis}")
+        robot._robot.sync_send_coord(axis, coords[axis-1] + distance, speed)
+        coords = robot._robot.get_coords()
+        logger.info(f"Current position: {coords}")
+    
+    # Move in negative directions
+    for axis in [1, 2, 3]:
+        logger.info(f"Moving -{distance}mm along axis {axis}")
+        robot._robot.sync_send_coord(axis, coords[axis-1] - distance, speed)
+        coords = robot._robot.get_coords()
+        logger.info(f"Current position: {coords}")
 
-def spiral(waypoints: int = 100, max_radius: float = 30.0) -> None:
+def spiral(waypoints: int = 100, max_radius: float = 10.0) -> None:
     """Draw a spiral pattern starting from home position.
     
     Args:
