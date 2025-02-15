@@ -220,10 +220,11 @@ class Tablet:
         print(f"\n{header}")
         print("    " + "-" * w)  # Separator line
         for i in range(h):
-            row = [f"{i:2d} |"]  # Row number with padding
+            row = []
             for j in range(w):
                 val = min(9, self.canvas[i,j] // scale)
                 row.append(str(val))
+            row.append("\n")
             print("".join(row))
 
 # Test and calibration functions
