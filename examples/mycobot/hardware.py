@@ -240,25 +240,20 @@ def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int
         coords = robot._robot.get_coords()
         robot.print_position()
 
-def spiral(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+def spiral(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE, turns: int = 4) -> None:
     robot = Robot(speed=speed, mode=mode)
     robot.go_home()
     robot.print_position()
     coords = robot._robot.get_coords()
-    # Generate spiral points (4 turns = 8π radians)
-    t = np.linspace(0, 8*np.pi, 100)
-    radius = scale * t / (8*np.pi)  # Radius grows linearly with angle
+    t = np.linspace(0, turns*2*np.pi, 100)
+    radius = scale * t / (8*np.pi)
     x = coords[0] + radius * np.cos(t)
     y = coords[1] + radius * np.sin(t)
-    # Keep z, rx, ry, rz constant from origin position
     for xi, yi in zip(x, y):
         new_coords = [xi, yi, coords[2], coords[3], coords[4], coords[5]]
         robot.send_coords(new_coords)
         robot.print_position()
-    
-    # Return to origin
-    robot.send_coords(coords)
-    logger.info("Spiral movement complete")
+    robot.go_home()
 
 class Tablet:
     def __init__(
