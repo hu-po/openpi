@@ -271,202 +271,73 @@ class Tablet:
         self.state: Dict[str, int] = {
             "x": 0, "y": 0, "pressure": 0, "tilt_x": 0, "tilt_y": 0
         }
-        self.step_count = 0
         self.device: Optional[evdev.InputDevice] = None
         self._open_device(device_name)
-        self._capture_thread: Optional[threading.Thread] = None
-        self._stop_event = threading.Event()
-
-    def __enter__(self):
-        """
-        Context manager entrypoint: automatically start background capturing.
-        """
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Context manager exit: stop capturing thread, ensure cleanup.
-        """
-        self.stop()
-
-    def start(self):
-        """
-        Manually start background capture if not using 'with Tablet() as t:'.
-        """
-        if not self.device:
-            logger.warning("Cannot start - no device found/initialized.")
-            return
-
-        # Clear the stop event (so that the capture loop runs)
-        self._stop_event.clear()
-
-        if self._capture_thread is None or not self._capture_thread.is_alive():
-            self._capture_thread = threading.Thread(
-                target=self._capture_loop,
-                name="TabletCaptureThread",
-                daemon=True,  # or False, depends on preference
-            )
-            self._capture_thread.start()
-            logger.info("Tablet capture thread started.")
-
-    def stop(self):
-        """
-        Manually stop background capture if not using the context manager.
-        """
-        self._stop_event.set()
-        if self._capture_thread is not None:
-            self._capture_thread.join(timeout=2.0)
-            self._capture_thread = None
-        logger.info("Tablet capture thread stopped.")
-        self.display_result()
+        logger.info("Tablet state initialized: %s", self.state)
 
     def _open_device(self, device_name: str) -> None:
-        """
-        Helper to find/open the evdev device matching 'device_name'.
-        """
         devices = evdev.list_devices()
         if not devices:
-            logger.error("No input devices found.")
+            logger.error("No input devices found")
             return
 
+        logger.info("Available input devices:")
         for path in devices:
             try:
                 dev = evdev.InputDevice(path)
+                logger.info(f"  {dev.path}: {dev.name}")
                 if device_name in dev.name:
                     self.device = dev
                     logger.info(f"✏️ Connected to {dev.name} at {dev.path}")
                     break
             except (PermissionError, OSError) as e:
                 logger.error(f"Permission denied for device {path}: {e}")
-        else:
-            logger.error("Wacom pen device not found.")
+
+        if not self.device:
+            logger.error(f"Wacom pen device '{device_name}' not found")
             return
 
+        # Log capabilities
         caps = dict(self.device.capabilities()[evdev.ecodes.EV_ABS])
         self.x_info = caps[evdev.ecodes.ABS_X]
         self.y_info = caps[evdev.ecodes.ABS_Y]
         self.p_info = caps[evdev.ecodes.ABS_PRESSURE]
-        self.tilt_x_info = caps.get(evdev.ecodes.ABS_TILT_X, None)
-        self.tilt_y_info = caps.get(evdev.ecodes.ABS_TILT_Y, None)
-        
         logger.info(f"X range: {self.x_info.min} to {self.x_info.max}")
         logger.info(f"Y range: {self.y_info.min} to {self.y_info.max}")
         logger.info(f"Pressure range: {self.p_info.min} to {self.p_info.max}")
-        if self.tilt_x_info:
-            logger.info(f"Tilt X range: {self.tilt_x_info.min} to {self.tilt_x_info.max}")
-        if self.tilt_y_info:
-            logger.info(f"Tilt Y range: {self.tilt_y_info.min} to {self.tilt_y_info.max}")
 
-    def _capture_loop(self):
-        """
-        The background thread: reads tablet events in a loop and updates buffer.
-        """
-        logger.info("Entering tablet capture loop.")
-        while not self._stop_event.is_set():
-            try:
-                # We'll use read() which returns next event or blocks until available
-                for event in self.device.read():
-                    if self._stop_event.is_set():
-                        break
-                    if event.type == evdev.ecodes.EV_ABS:
-                        self._handle_event(event)
-            except OSError as e:
-                # read() can raise OSError if device is disconnected, permissions changed, etc.
-                logger.error(f"Tablet device read error: {e}")
-                break
-            except Exception as e:
-                logger.error(f"Unexpected error in capture loop: {e}", exc_info=True)
-                break
-
-        logger.info("Exiting tablet capture loop.")
-
-    def _handle_event(self, event: evdev.events.InputEvent) -> None:
-        # same logic you currently have
-        if event.code == evdev.ecodes.ABS_X:
-            self.state["x"] = event.value
-        elif event.code == evdev.ecodes.ABS_Y:
-            self.state["y"] = event.value
-        elif event.code == evdev.ecodes.ABS_PRESSURE:
-            self.state["pressure"] = event.value
-            if self.state["pressure"] > 0:
-                x, y, intensity = self._map_coordinates(
-                    self.state["x"], self.state["y"], self.state["pressure"]
-                )
-                self.draw_point(x, y, intensity)
-                self.step_count += 1
-                if self.step_count >= self.max_steps:
-                    logger.info("Maximum steps reached.")
-                    # Instead of raising KeyboardInterrupt, let's just stop:
-                    self.stop()
-        elif event.code == evdev.ecodes.ABS_TILT_X and self.tilt_x_info:
-            self.state["tilt_x"] = event.value
-        elif event.code == evdev.ecodes.ABS_TILT_Y and self.tilt_y_info:
-            self.state["tilt_y"] = event.value
-
-    @staticmethod
-    def _normalize(value: int, min_val: int, max_val: int) -> float:
-        # same as before
-        return min(max((value - min_val) / (max_val - min_val), 0), 1)
-
-    def _map_coordinates(self, x: int, y: int, p: int):
-        # First normalize to tablet canvas space
-        x_rel = x - _c.TABLET_CANVAS_ORIGIN[0]
-        y_rel = y - _c.TABLET_CANVAS_ORIGIN[1]
+    def update(self) -> None:
+        """Poll for new events and update state"""
+        if not self.device:
+            return
         
-        # Normalize relative to canvas size in tablet space
-        norm_x = x_rel / self.canvas_size_tabletspace[0]
-        norm_y = y_rel / self.canvas_size_tabletspace[1]
-        norm_p = self._normalize(p, self.p_info.min, self.p_info.max)
-        
-        # Map to pixel space
-        mapped_x = int(norm_x * (self.canvas_size_pixelspace[0] - 1))
-        mapped_y = int(norm_y * (self.canvas_size_pixelspace[1] - 1))
-        
-        # Clamp values to valid range
-        mapped_x = max(0, min(mapped_x, self.canvas_size_pixelspace[0] - 1))
-        mapped_y = max(0, min(mapped_y, self.canvas_size_pixelspace[1] - 1))
-        
-        return mapped_x, mapped_y, norm_p
-
-    def draw_point(self, x: int, y: int, intensity: float) -> None:
-        if 0 <= x < self.canvas_size_pixelspace[0] and 0 <= y < self.canvas_size_pixelspace[1]:
-            y = self.canvas_size_pixelspace[1] - 1 - y  # Flip y-axis
-            pen_width = _c.TABLET_PEN_WIDTH
-            for dx in range(-pen_width//2, pen_width//2 + 1):
-                for dy in range(-pen_width//2, pen_width//2 + 1):
-                    new_x, new_y = x + dx, y + dy
-                    if (0 <= new_x < self.canvas_size_pixelspace[0]) and (0 <= new_y < self.canvas_size_pixelspace[1]):
-                        self.buffer[new_y, new_x] = min(255, int((1.0 - intensity) * 255))
-
-    def display_result(self) -> None:
-        plt.switch_backend("Agg")
-        plt.imsave("tablet_output.png", self.buffer, cmap="Greys")
-        logger.info("Saved output to tablet_output.png")
-
-def test_tablet() -> None:
-    tablet = Tablet()
-    if tablet.device:
-        logger.info("Starting tablet capture for 5 seconds...")
-        tablet.capture(duration=5.0)
-        logger.info("Tablet test complete - check tablet_output.png")
-    else:
-        logger.error("Tablet test failed - no device found")
-
-def print_tablet_position(tablet: Tablet) -> None:
-    x, y = tablet.state["x"], tablet.state["y"]
-    p = tablet.state["pressure"]
-    print(f"✏️  <x, y, pressure>")
-    print(f"  pos<{_c.AXIS_COLORS['x']}{x:.0f}{_c.AXIS_COLORS['reset']}, "
-          f"{_c.AXIS_COLORS['y']}{y:.0f}{_c.AXIS_COLORS['reset']}> (tablet units)")
-    print(f"  pressure: {p}")
+        try:
+            events = self.device.read()
+            for event in events:
+                if event.type == evdev.ecodes.EV_ABS:
+                    if event.code == evdev.ecodes.ABS_X:
+                        self.state["x"] = event.value
+                        logger.debug(f"X updated: {event.value}")
+                    elif event.code == evdev.ecodes.ABS_Y:
+                        self.state["y"] = event.value
+                        logger.debug(f"Y updated: {event.value}")
+                    elif event.code == evdev.ecodes.ABS_PRESSURE:
+                        self.state["pressure"] = event.value
+                        logger.debug(f"Pressure updated: {event.value}")
+        except (OSError, BlockingIOError) as e:
+            # Non-blocking read with no data available
+            pass
 
 def calibrate_canvas() -> None:
     """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
     logger.info("Starting canvas calibration...")
     robot = Robot()
-    robot.go_home()
+    tablet = Tablet()
     
+    if not tablet.device:
+        logger.error("No tablet device found. Aborting calibration.")
+        return
+
     class Raw:
         def __init__(self, stream):
             self.stream = stream
@@ -477,129 +348,128 @@ def calibrate_canvas() -> None:
         def __exit__(self, type_, value, traceback):
             termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
 
-    # Use context manager to handle tablet capture thread
-    with Tablet() as tablet:
-        if not tablet.device:
-            logger.error("No tablet device found. Aborting calibration.")
-            return
+    # Move to home position first
+    robot.go_home()
+    time.sleep(1)
 
-        # Calibrate origin
-        logger.info("\n=== Calibrating Canvas Origin ===")
-        logger.info("1. Robot will enter floppy mode")
-        logger.info("2. Move pen to center of canvas")
-        logger.info("3. Press SPACE when ready (q to quit)")
-        logger.info("4. Touch pen to tablet surface to see position")
-        robot._robot.release_all_servos()
+    # Calibrate origin
+    logger.info("\n=== Calibrating Canvas Origin ===")
+    logger.info("1. Robot will enter floppy mode")
+    logger.info("2. Move pen to center of canvas")
+    logger.info("3. Press SPACE when ready (q to quit)")
+    logger.info("4. Touch pen to tablet surface to see position")
+    robot._robot.release_all_servos()
 
-        while True:
-            print("\033[2J\033[H")  # Clear screen and move cursor to top
-            robot.print_position()
-            print("\nTablet Position:")
-            print_tablet_position(tablet)
-            
-            with Raw(sys.stdin):
-                key = sys.stdin.read(1)
-                if key == "q":
-                    logger.info("Calibration aborted")
-                    return
-                elif key == " ":
-                    # Record robot position
-                    angles = robot.get_angles()
-                    if not angles:
-                        logger.error("Failed to get robot angles. Try again.")
-                        continue
+    while True:
+        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        robot.print_position()
+        print("\nTablet Position:")
+        tablet.update()  # Poll for new events
+        print_tablet_position(tablet)
+        
+        with Raw(sys.stdin):
+            key = sys.stdin.read(1)
+            if key == "q":
+                logger.info("Calibration aborted")
+                return
+            elif key == " ":
+                # Record positions...
+                angles = robot.get_angles()
+                if not angles:
+                    logger.error("Failed to get robot angles. Try again.")
+                    continue
+                
+                # Record tablet position
+                tablet_x = tablet.state["x"]
+                tablet_y = tablet.state["y"]
+                
+                if tablet.state["pressure"] == 0:
+                    logger.warning("No pressure detected - pen may not be touching tablet")
+                    continue
                     
-                    # Record tablet position
-                    tablet_x = tablet.state["x"]
-                    tablet_y = tablet.state["y"]
+                logger.info("\nCanvas Origin Calibration Results:")
+                logger.info(f"ORIGIN_POSITION = {angles}")
+                logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
+                break
+        time.sleep(0.1)  # Small delay to prevent CPU spinning
+
+    # Move to recorded origin
+    robot.send_angles(angles)
+    time.sleep(1)
+
+    # Calibrate X-axis limit
+    logger.info("\n=== Calibrating Canvas X-Axis Limit ===")
+    logger.info("1. Robot will enter floppy mode")
+    logger.info("2. Move pen to right edge of desired canvas area")
+    logger.info("3. Press SPACE when ready (q to quit)")
+    logger.info("4. Touch pen to tablet surface to see position")
+    robot._robot.release_all_servos()
+
+    while True:
+        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        robot.print_position()
+        print("\nTablet Position:")
+        tablet.update()
+        print(f"\nX-axis distance from origin: {abs(tablet.state['x'] - tablet_x):.0f}")
+        
+        with Raw(sys.stdin):
+            key = sys.stdin.read(1)
+            if key == "q":
+                logger.info("Calibration aborted")
+                return
+            elif key == " ":
+                if tablet.state["pressure"] == 0:
+                    logger.warning("No pressure detected - pen may not be touching tablet")
+                    continue
                     
-                    if tablet.state["pressure"] == 0:
-                        logger.warning("No pressure detected - pen may not be touching tablet")
-                        continue
-                        
-                    logger.info("\nCanvas Origin Calibration Results:")
-                    logger.info(f"ORIGIN_POSITION = {angles}")
-                    logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
-                    break
-            time.sleep(0.1)  # Small delay to prevent CPU spinning
+                x_limit = abs(tablet.state["x"] - tablet_x)
+                logger.info(f"\nX-axis size in tablet space: {x_limit}")
+                break
+        time.sleep(0.1)
 
-        # Move to recorded origin
-        robot.send_angles(angles)
-        time.sleep(1)
+    # Move back to origin
+    robot.send_angles(angles)
+    time.sleep(1)
 
-        # Calibrate X-axis limit
-        logger.info("\n=== Calibrating Canvas X-Axis Limit ===")
-        logger.info("1. Robot will enter floppy mode")
-        logger.info("2. Move pen to right edge of desired canvas area")
-        logger.info("3. Press SPACE when ready (q to quit)")
-        logger.info("4. Touch pen to tablet surface to see position")
-        robot._robot.release_all_servos()
+    # Calibrate Y-axis limit
+    logger.info("\n=== Calibrating Canvas Y-Axis Limit ===")
+    logger.info("1. Robot will enter floppy mode")
+    logger.info("2. Move pen to top edge of desired canvas area")
+    logger.info("3. Press SPACE when ready (q to quit)")
+    logger.info("4. Touch pen to tablet surface to see position")
+    robot._robot.release_all_servos()
 
-        while True:
-            print("\033[2J\033[H")  # Clear screen and move cursor to top
-            robot.print_position()
-            print("\nTablet Position:")
-            print_tablet_position(tablet)
-            print(f"\nX-axis distance from origin: {abs(tablet.state['x'] - tablet_x):.0f}")
-            
-            with Raw(sys.stdin):
-                key = sys.stdin.read(1)
-                if key == "q":
-                    logger.info("Calibration aborted")
-                    return
-                elif key == " ":
-                    if tablet.state["pressure"] == 0:
-                        logger.warning("No pressure detected - pen may not be touching tablet")
-                        continue
-                        
-                    x_limit = abs(tablet.state["x"] - tablet_x)
-                    logger.info(f"\nX-axis size in tablet space: {x_limit}")
-                    break
-            time.sleep(0.1)
+    while True:
+        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        robot.print_position()
+        print("\nTablet Position:")
+        tablet.update()
+        print(f"\nY-axis distance from origin: {abs(tablet.state['y'] - tablet_y):.0f}")
+        
+        with Raw(sys.stdin):
+            key = sys.stdin.read(1)
+            if key == "q":
+                logger.info("Calibration aborted")
+                return
+            elif key == " ":
+                if tablet.state["pressure"] == 0:
+                    logger.warning("No pressure detected - pen may not be touching tablet")
+                    continue
+                    
+                y_limit = abs(tablet.state["y"] - tablet_y)
+                logger.info(f"\nY-axis size in tablet space: {y_limit}")
+                break
+        time.sleep(0.1)
 
-        # Move back to origin
-        robot.send_angles(angles)
-        time.sleep(1)
+    # Final results
+    logger.info("\n=== Calibration Results ===")
+    logger.info("Add these values to constants.py:")
+    logger.info(f"ORIGIN_POSITION = {angles}")
+    logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
+    logger.info(f"TABLET_CANVAS_SIZE_TABLETSPACE = ({x_limit}, {y_limit})")
 
-        # Calibrate Y-axis limit
-        logger.info("\n=== Calibrating Canvas Y-Axis Limit ===")
-        logger.info("1. Robot will enter floppy mode")
-        logger.info("2. Move pen to top edge of desired canvas area")
-        logger.info("3. Press SPACE when ready (q to quit)")
-        logger.info("4. Touch pen to tablet surface to see position")
-        robot._robot.release_all_servos()
-
-        while True:
-            print("\033[2J\033[H")  # Clear screen and move cursor to top
-            robot.print_position()
-            print("\nTablet Position:")
-            print_tablet_position(tablet)
-            print(f"\nY-axis distance from origin: {abs(tablet.state['y'] - tablet_y):.0f}")
-            
-            with Raw(sys.stdin):
-                key = sys.stdin.read(1)
-                if key == "q":
-                    logger.info("Calibration aborted")
-                    return
-                elif key == " ":
-                    if tablet.state["pressure"] == 0:
-                        logger.warning("No pressure detected - pen may not be touching tablet")
-                        continue
-                        
-                    y_limit = abs(tablet.state["y"] - tablet_y)
-                    logger.info(f"\nY-axis size in tablet space: {y_limit}")
-                    break
-            time.sleep(0.1)
-
-        # Final results
-        logger.info("\n=== Calibration Results ===")
-        logger.info("Add these values to constants.py:")
-        logger.info(f"ORIGIN_POSITION = {angles}")
-        logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
-        logger.info(f"TABLET_CANVAS_SIZE_TABLETSPACE = ({x_limit}, {y_limit})")
-
-        # Return to origin
-        robot.send_angles(angles)
+    # Return to origin
+    robot.send_angles(angles)
 
 def test_canvas() -> None:
     """Test canvas calibration by rastering across the tablet surface"""
