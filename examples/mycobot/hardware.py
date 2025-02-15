@@ -16,6 +16,8 @@ from examples.mycobot import constants as _c
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+# Filter out verbose pymycobot debug logs
+logging.getLogger("pymycobot.generate").setLevel(logging.WARNING)
 
 @dataclass
 class Args:
