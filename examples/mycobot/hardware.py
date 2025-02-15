@@ -103,6 +103,14 @@ class Robot:
         self._robot.release_all_servos()
         logger.info("Done")
 
+    def go_origin(self, speed: Optional[Union[int, float]] = None) -> None:
+        logger.info("Moving to origin position...")
+        speed = speed or self._speed
+        self._robot.set_color(255, 255, 0)
+        self._robot.sync_send_angles(_c.ORIGIN_POSITION, speed, timeout=_c.ROBOT_MOVE_TIMEOUT)
+        self._robot.set_color(0, 255, 0)
+        logger.info("Done")
+
     def __del__(self) -> None:
         logger.info("Terminating Robot")
         self.go_sleep()
@@ -113,8 +121,8 @@ class Robot:
         if coords:
             x, y, z, rx, ry, rz = coords
             print(f"\033[1m\033[36m🎯 Position:\033[0m")
-            print(f"  {_c.AXIS_COLORS['x']}X\033[0m: {x:6.2f}, {_c.AXIS_COLORS['y']}Y\033[0m: {y:6.2f}, {_c.AXIS_COLORS['z']}Z\033[0m: {z:6.2f}")
-            print(f"  \033[33m🔄 RPY: ({rx:6.2f}, {ry:6.2f}, {rz:6.2f})\033[0m")
+            print(f"  {_c.AXIS_COLORS['x']}{x:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['y']}{y:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['z']}{z:.0f}{_c.AXIS_COLORS['reset']}")
+            print(f"  {_c.AXIS_COLORS['x']}{rx:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['y']}{ry:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['z']}{rz:.0f}{_c.AXIS_COLORS['reset']})")
         else:
             print("\033[31m❌ Could not get robot position\033[0m")
 
@@ -212,11 +220,9 @@ def calibrate_zero() -> None:
 def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     robot = Robot(speed=speed, mode=mode)
     robot.go_home()
-    
-    coords = robot._robot.get_coords()
     logger.info("Starting square movement")
     robot.print_position()
-    
+    coords = robot._robot.get_coords()
     axis_names = ["x", "y", "z"]
     for axis in [1, 2, 3]:
         axis_name = axis_names[axis-1]
@@ -226,7 +232,6 @@ def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int
         robot.send_coords(new_coords)
         coords = robot._robot.get_coords()
         robot.print_position()
-    
     for axis in [1, 2, 3]:
         axis_name = axis_names[axis-1]
         logger.info(f"Moving -{scale}mm along {_c.AXIS_COLORS[axis_name]}{axis_name}{_c.AXIS_COLORS['reset']}-axis")
@@ -238,21 +243,15 @@ def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int
 
 def spiral(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     robot = Robot(speed=speed, mode=mode)
-    logger.info("Starting spiral movement")
-    
-    # Move to origin position first
-    robot.send_angles(_c.ORIGIN_POSITION, speed)
+    robot.go_origin()
+    logger.info("Starting square movement")
+    robot.print_position()
     coords = robot._robot.get_coords()
-    if not coords:
-        logger.error("Failed to get robot coordinates")
-        return
-    
     # Generate spiral points (4 turns = 8π radians)
     t = np.linspace(0, 8*np.pi, 100)
     radius = scale * t / (8*np.pi)  # Radius grows linearly with angle
     x = coords[0] + radius * np.cos(t)
     y = coords[1] + radius * np.sin(t)
-    
     # Keep z, rx, ry, rz constant from origin position
     for xi, yi in zip(x, y):
         new_coords = [xi, yi, coords[2], coords[3], coords[4], coords[5]]
