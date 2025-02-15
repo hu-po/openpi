@@ -4,6 +4,7 @@ import evdev
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import threading
 from typing import Dict, List, Optional, Tuple, Union
 from pymycobot.mycobot import MyCobot
 from dataclasses import dataclass
