@@ -438,6 +438,165 @@ def test_tablet() -> None:
     else:
         logger.error("Tablet test failed - no device found")
 
+def calibrate_canvas() -> None:
+    """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
+    logger.info("Starting canvas calibration...")
+    robot = Robot()
+    tablet = Tablet()
+
+    if not tablet.device:
+        logger.error("No tablet device found. Aborting calibration.")
+        return
+
+    class Raw:
+        def __init__(self, stream):
+            self.stream = stream
+            self.fd = self.stream.fileno()
+        def __enter__(self):
+            self.original_stty = termios.tcgetattr(self.fd)
+            tty.setraw(self.fd)
+        def __exit__(self, type_, value, traceback):
+            termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
+
+    # Move to home position first
+    robot.go_home()
+    time.sleep(1)
+
+    # Calibrate origin
+    logger.info("\n=== Calibrating Canvas Origin ===")
+    logger.info("1. Robot will enter floppy mode")
+    logger.info("2. Move pen to center of canvas")
+    logger.info("3. Press SPACE when ready (q to quit)")
+    robot._robot.release_all_servos()
+
+    while True:
+        with Raw(sys.stdin):
+            key = sys.stdin.read(1)
+            if key == "q":
+                logger.info("Calibration aborted")
+                return
+            elif key == " ":
+                # Record robot position
+                angles = robot.get_angles()
+                if not angles:
+                    logger.error("Failed to get robot angles. Try again.")
+                    continue
+                
+                # Record tablet position
+                tablet_x = tablet.state["x"]
+                tablet_y = tablet.state["y"]
+                
+                logger.info("\nCanvas Origin Calibration Results:")
+                logger.info(f"ORIGIN_POSITION = {angles}")
+                logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
+                break
+
+    # Move to recorded origin
+    robot.send_angles(angles)
+    time.sleep(1)
+
+    # Calibrate X-axis limit
+    logger.info("\n=== Calibrating Canvas X-Axis Limit ===")
+    logger.info("1. Robot will enter floppy mode")
+    logger.info("2. Move pen to right edge of desired canvas area")
+    logger.info("3. Press SPACE when ready (q to quit)")
+    robot._robot.release_all_servos()
+
+    while True:
+        with Raw(sys.stdin):
+            key = sys.stdin.read(1)
+            if key == "q":
+                logger.info("Calibration aborted")
+                return
+            elif key == " ":
+                x_limit = abs(tablet.state["x"] - tablet_x)
+                logger.info(f"\nX-axis size in tablet space: {x_limit}")
+                break
+
+    # Move back to origin
+    robot.send_angles(angles)
+    time.sleep(1)
+
+    # Calibrate Y-axis limit
+    logger.info("\n=== Calibrating Canvas Y-Axis Limit ===")
+    logger.info("1. Robot will enter floppy mode")
+    logger.info("2. Move pen to top edge of desired canvas area")
+    logger.info("3. Press SPACE when ready (q to quit)")
+    robot._robot.release_all_servos()
+
+    while True:
+        with Raw(sys.stdin):
+            key = sys.stdin.read(1)
+            if key == "q":
+                logger.info("Calibration aborted")
+                return
+            elif key == " ":
+                y_limit = abs(tablet.state["y"] - tablet_y)
+                logger.info(f"\nY-axis size in tablet space: {y_limit}")
+                break
+
+    # Final results
+    logger.info("\n=== Calibration Results ===")
+    logger.info("Add these values to constants.py:")
+    logger.info(f"ORIGIN_POSITION = {angles}")
+    logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
+    logger.info(f"TABLET_CANVAS_SIZE_TABLETSPACE = ({x_limit}, {y_limit})")
+
+    # Return to origin
+    robot.send_angles(angles)
+
+def test_canvas() -> None:
+    """Test canvas calibration by rastering across the tablet surface"""
+    logger.info("Starting canvas test...")
+    robot = Robot()
+    tablet = Tablet()
+
+    if not tablet.device:
+        logger.error("No tablet device found. Aborting test.")
+        return
+
+    # Move to origin
+    logger.info("Moving to canvas origin...")
+    robot.send_angles(_c.ORIGIN_POSITION)
+    time.sleep(1)
+
+    # Get current coordinates
+    coords = robot._robot.get_coords()
+    if not coords:
+        logger.error("Failed to get robot coordinates")
+        return
+
+    # Calculate grid points
+    num_points = 5  # 5x5 grid
+    x_spacing = _c.TABLET_CANVAS_SIZE_TABLETSPACE[0] / (num_points - 1)
+    y_spacing = _c.TABLET_CANVAS_SIZE_TABLETSPACE[1] / (num_points - 1)
+
+    logger.info(f"Testing {num_points}x{num_points} grid points...")
+    
+    # Raster pattern
+    for i in range(num_points):
+        for j in range(num_points):
+            # Calculate target position in tablet space
+            target_x = _c.TABLET_CANVAS_ORIGIN[0] + (j * x_spacing)
+            target_y = _c.TABLET_CANVAS_ORIGIN[1] + (i * y_spacing)
+            
+            # Move robot
+            new_coords = coords.copy()
+            new_coords[0] += j * x_spacing * _c.ROBOT_SCALE / _c.TABLET_CANVAS_SIZE_TABLETSPACE[0]
+            new_coords[1] += i * y_spacing * _c.ROBOT_SCALE / _c.TABLET_CANVAS_SIZE_TABLETSPACE[1]
+            
+            robot.send_coords(new_coords)
+            time.sleep(0.5)
+            
+            # Log position
+            logger.info(f"Grid point ({i},{j})")
+            logger.info(f"Target tablet pos: ({target_x:.1f}, {target_y:.1f})")
+            logger.info(f"Actual tablet pos: ({tablet.state['x']:.1f}, {tablet.state['y']:.1f})")
+            
+    # Return to origin
+    robot.send_angles(_c.ORIGIN_POSITION)
+    logger.info("Canvas test complete")
+
 def main(args: Args) -> None:
     if args.debug:
         logger.setLevel(logging.DEBUG)
@@ -464,9 +623,13 @@ def main(args: Args) -> None:
         square(scale=args.scale, speed=args.speed, mode=args.mode)
     elif args.cmd == "spiral":
         spiral(scale=args.scale, speed=args.speed, mode=args.mode)
+    elif args.cmd == "calibrate_canvas":
+        calibrate_canvas()
+    elif args.cmd == "test_canvas":
+        test_canvas()
     else:
         logger.error(f"Unknown command: {args.cmd}")
-        logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate, calibrate_zero, square, spiral")
+        logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate, calibrate_zero, square, spiral, calibrate_canvas, test_canvas")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, force=True)
