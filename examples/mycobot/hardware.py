@@ -27,6 +27,8 @@ class Args:
     """Movement speed"""
     mode: int = _c.ROBOT_MODE
     """Movement mode"""
+    scale: float = _c.ROBOT_SCALE
+    """Scale for movement patterns in mm"""
 
 class Camera:
     def __init__(
@@ -103,6 +105,16 @@ class Robot:
         logger.info("Terminating Robot")
         self.go_sleep()
         self._robot.set_color(0, 0, 0)
+
+    def print_position(self) -> None:
+        coords = self._robot.get_coords()
+        if coords:
+            x, y, z, rx, ry, rz = coords
+            print(f"\033[1m\033[36m🎯 Position:\033[0m")
+            print(f"  \033[32m📍 XYZ: ({x:6.2f}, {y:6.2f}, {z:6.2f})\033[0m")
+            print(f"  \033[33m🔄 RPY: ({rx:6.2f}, {ry:6.2f}, {rz:6.2f})\033[0m")
+        else:
+            print("\033[31m❌ Could not get robot position\033[0m")
 
 def test_robot(speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     robot = Robot(speed=speed, mode=mode)
@@ -195,11 +207,11 @@ def calibrate_zero() -> None:
 
     logger.info("\nCalibration complete for all servos")
 
-def square(distance: float = 10.0, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     """Draw a square pattern in 3D space starting from home position.
     
     Args:
-        distance: Distance in mm for each movement (default: 10.0)
+        scale: Size of square movements in mm (default: ROBOT_SCALE from constants)
         speed: Movement speed (default: ROBOT_SPEED from constants)
         mode: Movement mode (default: ROBOT_MODE from constants)
     """
@@ -212,28 +224,28 @@ def square(distance: float = 10.0, speed: int = _c.ROBOT_SPEED, mode: int = _c.R
     
     # Move in positive directions
     for axis in [1, 2, 3]:
-        logger.info(f"Moving +{distance}mm along axis {axis}")
+        logger.info(f"Moving +{scale}mm along axis {axis}")
         new_coords = coords.copy()
-        new_coords[axis-1] += distance
+        new_coords[axis-1] += scale
         robot.send_coords(new_coords)
         coords = robot._robot.get_coords()
         logger.info(f"Current position: {coords}")
     
     # Move in negative directions
     for axis in [1, 2, 3]:
-        logger.info(f"Moving -{distance}mm along axis {axis}")
+        logger.info(f"Moving -{scale}mm along axis {axis}")
         new_coords = coords.copy()
-        new_coords[axis-1] -= distance
+        new_coords[axis-1] -= scale
         robot.send_coords(new_coords)
         coords = robot._robot.get_coords()
         logger.info(f"Current position: {coords}")
 
-def spiral(waypoints: int = 100, max_radius: float = 10.0, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+def spiral(waypoints: int = 100, scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     """Draw a spiral pattern starting from home position.
     
     Args:
         waypoints: Number of points to use for spiral (default: 100)
-        max_radius: Maximum radius of spiral in mm (default: 50.0)
+        scale: Maximum radius of spiral in mm (default: ROBOT_SCALE from constants)
         speed: Movement speed (default: ROBOT_SPEED from constants)
         mode: Movement mode (default: ROBOT_MODE from constants)
     """
@@ -244,7 +256,7 @@ def spiral(waypoints: int = 100, max_radius: float = 10.0, speed: int = _c.ROBOT
     
     for i in range(waypoints):
         theta = i * 4 * np.pi / waypoints
-        radius = (i / waypoints) * max_radius
+        radius = (i / waypoints) * scale
         x_offset = radius * np.cos(theta)
         y_offset = radius * np.sin(theta)
         
@@ -466,9 +478,9 @@ def main(args: Args) -> None:
     elif args.cmd == "calibrate_zero":
         calibrate_zero()
     elif args.cmd == "square":
-        square(speed=args.speed, mode=args.mode)
+        square(scale=args.scale, speed=args.speed, mode=args.mode)
     elif args.cmd == "spiral":
-        spiral(speed=args.speed, mode=args.mode)
+        spiral(scale=args.scale, speed=args.speed, mode=args.mode)
     else:
         logger.error(f"Unknown command: {args.cmd}")
         logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate, calibrate_zero, square, spiral")
