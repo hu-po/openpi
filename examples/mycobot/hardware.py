@@ -209,69 +209,57 @@ def calibrate_zero() -> None:
 
     logger.info("\nCalibration complete for all servos")
 
-def square(waypoints: int = 100, scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     robot = Robot(speed=speed, mode=mode)
-    # Start from origin instead of home
-    robot.send_coords(_c.ORIGIN_POSITION)
+    robot.go_home()
+    
     coords = robot._robot.get_coords()
     logger.info("Starting square movement")
     robot.print_position()
     
-    # Define square vertices relative to start position
-    vertices = [
-        (scale, 0),    # right
-        (scale, scale),# up-right
-        (0, scale),    # up
-        (0, 0)        # back to start
-    ]
-    
-    # Interpolate between vertices
-    points_per_side = waypoints // 4
-    for i in range(len(vertices)-1):
-        start_x, start_y = vertices[i]
-        end_x, end_y = vertices[i+1]
-        
-        for t in range(points_per_side):
-            # Linear interpolation between vertices
-            frac = t / points_per_side
-            x_offset = start_x + (end_x - start_x) * frac
-            y_offset = start_y + (end_y - start_y) * frac
-            
-            new_coords = coords.copy()
-            new_coords[0] += x_offset  # x-axis
-            new_coords[1] += y_offset  # y-axis
-            robot.send_coords(new_coords)
-            time.sleep(0.1)
-            
-            logger.info(f"Square point {i*points_per_side + t + 1}/{waypoints} - x_offset: {x_offset:.2f}mm, y_offset: {y_offset:.2f}mm")
-            robot.print_position()
-    
-    robot.go_home()
-
-def spiral(waypoints: int = 100, scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
-    robot = Robot(speed=speed, mode=mode)
-    robot.go_home()
-    coords = robot._robot.get_coords()
-    logger.info("Starting spiral movement")
-    robot.print_position()
-    
-    for i in range(waypoints):
-        theta = i * 4 * np.pi / waypoints
-        radius = (i / waypoints) * scale
-        x_offset = radius * np.cos(theta)
-        y_offset = radius * np.sin(theta)
-        
+    axis_names = ["x", "y", "z"]
+    for axis in [1, 2, 3]:
+        logger.info(f"Moving +{scale}mm along {axis_names[axis-1]}-axis")
         new_coords = coords.copy()
-        new_coords[0] += x_offset  # x-axis
-        new_coords[1] += y_offset  # y-axis
+        new_coords[axis-1] += scale
         robot.send_coords(new_coords)
-        time.sleep(0.1)
-        
-        logger.info(f"Spiral point {i+1}/{waypoints} - x_offset: {x_offset:.2f}mm, y_offset: {y_offset:.2f}mm")
+        coords = robot._robot.get_coords()
         robot.print_position()
     
-    robot.go_home()
+    for axis in [1, 2, 3]:
+        logger.info(f"Moving -{scale}mm along {axis_names[axis-1]}-axis")
+        new_coords = coords.copy()
+        new_coords[axis-1] -= scale
+        robot.send_coords(new_coords)
+        coords = robot._robot.get_coords()
+        robot.print_position()
 
+def spiral(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+    robot = Robot(speed=speed, mode=mode)
+    logger.info("Starting spiral movement")
+    
+    # Move to origin position first
+    robot.send_angles(_c.ORIGIN_POSITION, speed)
+    coords = robot._robot.get_coords()
+    if not coords:
+        logger.error("Failed to get robot coordinates")
+        return
+    
+    # Generate spiral points (4 turns = 8π radians)
+    t = np.linspace(0, 8*np.pi, 100)
+    radius = scale * t / (8*np.pi)  # Radius grows linearly with angle
+    x = coords[0] + radius * np.cos(t)
+    y = coords[1] + radius * np.sin(t)
+    
+    # Keep z, rx, ry, rz constant from origin position
+    for xi, yi in zip(x, y):
+        new_coords = [xi, yi, coords[2], coords[3], coords[4], coords[5]]
+        robot.send_coords(new_coords)
+        robot.print_position()
+    
+    # Return to origin
+    robot.send_coords(coords)
+    logger.info("Spiral movement complete")
 
 class Tablet:
     def __init__(
@@ -479,7 +467,7 @@ def main(args: Args) -> None:
     elif args.cmd == "calibrate_zero":
         calibrate_zero()
     elif args.cmd == "square":
-        square(waypoints=args.scale, speed=args.speed, mode=args.mode)
+        square(scale=args.scale, speed=args.speed, mode=args.mode)
     elif args.cmd == "spiral":
         spiral(scale=args.scale, speed=args.speed, mode=args.mode)
     else:
