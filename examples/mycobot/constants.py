@@ -13,6 +13,7 @@ ROBOT_PORT: str = "/dev/ttyAMA0"
 ROBOT_BAUDRATE: int = 1000000
 ROBOT_SPEED: int = 80  # Default movement speed (percentage)
 ROBOT_MOVE_TIMEOUT: int = 6  # seconds
+ROBOT_MODE: int = 0  # 0 = joint mode, 1 = Cartesian mode
 
 # Joint names and default positions
 JOINT_NAMES: list[str] = [

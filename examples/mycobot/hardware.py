@@ -68,6 +68,9 @@ class Robot:
     def send_angles(self, angles: List[float], speed: Union[int, float] = _c.ROBOT_SPEED) -> None:
         self._robot.send_angles(angles, speed)
 
+    def send_coords(self, coords: List[float], speed: Union[int, float] = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+        self._robot.sync_send_coords(coords, speed, mode=mode, timeout=_c.ROBOT_MOVE_TIMEOUT)
+        
     def go_home(self) -> None:
         logger.info("Moving to home position...")
         self._robot.set_color(255, 255, 0)
@@ -185,11 +188,6 @@ def square(distance: float = 10.0, speed: int = _c.ROBOT_SPEED) -> None:
     Args:
         distance: Distance in mm for each movement (default: 10.0)
         speed: Movement speed (default: ROBOT_SPEED from constants)
-        
-    Note: Valid coordinate ranges from docs:
-        x: -281.45 ~ 281.45 mm
-        y: -281.45 ~ 281.45 mm
-        z: -70 ~ 412.67 mm
     """
     robot = Robot()
     robot.go_home()
@@ -198,19 +196,21 @@ def square(distance: float = 10.0, speed: int = _c.ROBOT_SPEED) -> None:
     coords = robot._robot.get_coords()
     logger.info(f"Starting square movement from coords: {coords}")
     
-    # TODO: try different modes and speeds
-    
     # Move in positive directions
     for axis in [1, 2, 3]:
         logger.info(f"Moving +{distance}mm along axis {axis}")
-        robot._robot.sync_send_coords(axis, coords[axis-1] + distance, speed, mode=1)
+        new_coords = coords.copy()
+        new_coords[axis-1] += distance
+        robot.send_coords(new_coords)
         coords = robot._robot.get_coords()
         logger.info(f"Current position: {coords}")
     
     # Move in negative directions
     for axis in [1, 2, 3]:
         logger.info(f"Moving -{distance}mm along axis {axis}")
-        robot._robot.sync_send_coords(axis, coords[axis-1] - distance, speed, mode=1)
+        new_coords = coords.copy()
+        new_coords[axis-1] -= distance
+        robot.send_coords(new_coords)
         coords = robot._robot.get_coords()
         logger.info(f"Current position: {coords}")
 
