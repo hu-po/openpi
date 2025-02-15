@@ -465,12 +465,8 @@ def calibrate_canvas() -> None:
     """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
     logger.info("Starting canvas calibration...")
     robot = Robot()
-    tablet = Tablet()
-
-    if not tablet.device:
-        logger.error("No tablet device found. Aborting calibration.")
-        return
-
+    robot.go_home()
+    
     class Raw:
         def __init__(self, stream):
             self.stream = stream
@@ -481,127 +477,129 @@ def calibrate_canvas() -> None:
         def __exit__(self, type_, value, traceback):
             termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
 
-    # Move to home position first
-    robot.go_home()
-    time.sleep(1)
+    # Use context manager to handle tablet capture thread
+    with Tablet() as tablet:
+        if not tablet.device:
+            logger.error("No tablet device found. Aborting calibration.")
+            return
 
-    # Calibrate origin
-    logger.info("\n=== Calibrating Canvas Origin ===")
-    logger.info("1. Robot will enter floppy mode")
-    logger.info("2. Move pen to center of canvas")
-    logger.info("3. Press SPACE when ready (q to quit)")
-    logger.info("4. Touch pen to tablet surface to see position")
-    robot._robot.release_all_servos()
+        # Calibrate origin
+        logger.info("\n=== Calibrating Canvas Origin ===")
+        logger.info("1. Robot will enter floppy mode")
+        logger.info("2. Move pen to center of canvas")
+        logger.info("3. Press SPACE when ready (q to quit)")
+        logger.info("4. Touch pen to tablet surface to see position")
+        robot._robot.release_all_servos()
 
-    while True:
-        print("\033[2J\033[H")  # Clear screen and move cursor to top
-        robot.print_position()
-        print("\nTablet Position:")
-        print_tablet_position(tablet)
-        
-        with Raw(sys.stdin):
-            key = sys.stdin.read(1)
-            if key == "q":
-                logger.info("Calibration aborted")
-                return
-            elif key == " ":
-                # Record robot position
-                angles = robot.get_angles()
-                if not angles:
-                    logger.error("Failed to get robot angles. Try again.")
-                    continue
-                
-                # Record tablet position
-                tablet_x = tablet.state["x"]
-                tablet_y = tablet.state["y"]
-                
-                if tablet.state["pressure"] == 0:
-                    logger.warning("No pressure detected - pen may not be touching tablet")
-                    continue
+        while True:
+            print("\033[2J\033[H")  # Clear screen and move cursor to top
+            robot.print_position()
+            print("\nTablet Position:")
+            print_tablet_position(tablet)
+            
+            with Raw(sys.stdin):
+                key = sys.stdin.read(1)
+                if key == "q":
+                    logger.info("Calibration aborted")
+                    return
+                elif key == " ":
+                    # Record robot position
+                    angles = robot.get_angles()
+                    if not angles:
+                        logger.error("Failed to get robot angles. Try again.")
+                        continue
                     
-                logger.info("\nCanvas Origin Calibration Results:")
-                logger.info(f"ORIGIN_POSITION = {angles}")
-                logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
-                break
-        time.sleep(0.1)  # Small delay to prevent CPU spinning
-
-    # Move to recorded origin
-    robot.send_angles(angles)
-    time.sleep(1)
-
-    # Calibrate X-axis limit
-    logger.info("\n=== Calibrating Canvas X-Axis Limit ===")
-    logger.info("1. Robot will enter floppy mode")
-    logger.info("2. Move pen to right edge of desired canvas area")
-    logger.info("3. Press SPACE when ready (q to quit)")
-    logger.info("4. Touch pen to tablet surface to see position")
-    robot._robot.release_all_servos()
-
-    while True:
-        print("\033[2J\033[H")  # Clear screen and move cursor to top
-        robot.print_position()
-        print("\nTablet Position:")
-        print_tablet_position(tablet)
-        print(f"\nX-axis distance from origin: {abs(tablet.state['x'] - tablet_x):.0f}")
-        
-        with Raw(sys.stdin):
-            key = sys.stdin.read(1)
-            if key == "q":
-                logger.info("Calibration aborted")
-                return
-            elif key == " ":
-                if tablet.state["pressure"] == 0:
-                    logger.warning("No pressure detected - pen may not be touching tablet")
-                    continue
+                    # Record tablet position
+                    tablet_x = tablet.state["x"]
+                    tablet_y = tablet.state["y"]
                     
-                x_limit = abs(tablet.state["x"] - tablet_x)
-                logger.info(f"\nX-axis size in tablet space: {x_limit}")
-                break
-        time.sleep(0.1)
+                    if tablet.state["pressure"] == 0:
+                        logger.warning("No pressure detected - pen may not be touching tablet")
+                        continue
+                        
+                    logger.info("\nCanvas Origin Calibration Results:")
+                    logger.info(f"ORIGIN_POSITION = {angles}")
+                    logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
+                    break
+            time.sleep(0.1)  # Small delay to prevent CPU spinning
 
-    # Move back to origin
-    robot.send_angles(angles)
-    time.sleep(1)
+        # Move to recorded origin
+        robot.send_angles(angles)
+        time.sleep(1)
 
-    # Calibrate Y-axis limit
-    logger.info("\n=== Calibrating Canvas Y-Axis Limit ===")
-    logger.info("1. Robot will enter floppy mode")
-    logger.info("2. Move pen to top edge of desired canvas area")
-    logger.info("3. Press SPACE when ready (q to quit)")
-    logger.info("4. Touch pen to tablet surface to see position")
-    robot._robot.release_all_servos()
+        # Calibrate X-axis limit
+        logger.info("\n=== Calibrating Canvas X-Axis Limit ===")
+        logger.info("1. Robot will enter floppy mode")
+        logger.info("2. Move pen to right edge of desired canvas area")
+        logger.info("3. Press SPACE when ready (q to quit)")
+        logger.info("4. Touch pen to tablet surface to see position")
+        robot._robot.release_all_servos()
 
-    while True:
-        print("\033[2J\033[H")  # Clear screen and move cursor to top
-        robot.print_position()
-        print("\nTablet Position:")
-        print_tablet_position(tablet)
-        print(f"\nY-axis distance from origin: {abs(tablet.state['y'] - tablet_y):.0f}")
-        
-        with Raw(sys.stdin):
-            key = sys.stdin.read(1)
-            if key == "q":
-                logger.info("Calibration aborted")
-                return
-            elif key == " ":
-                if tablet.state["pressure"] == 0:
-                    logger.warning("No pressure detected - pen may not be touching tablet")
-                    continue
-                    
-                y_limit = abs(tablet.state["y"] - tablet_y)
-                logger.info(f"\nY-axis size in tablet space: {y_limit}")
-                break
-        time.sleep(0.1)
+        while True:
+            print("\033[2J\033[H")  # Clear screen and move cursor to top
+            robot.print_position()
+            print("\nTablet Position:")
+            print_tablet_position(tablet)
+            print(f"\nX-axis distance from origin: {abs(tablet.state['x'] - tablet_x):.0f}")
+            
+            with Raw(sys.stdin):
+                key = sys.stdin.read(1)
+                if key == "q":
+                    logger.info("Calibration aborted")
+                    return
+                elif key == " ":
+                    if tablet.state["pressure"] == 0:
+                        logger.warning("No pressure detected - pen may not be touching tablet")
+                        continue
+                        
+                    x_limit = abs(tablet.state["x"] - tablet_x)
+                    logger.info(f"\nX-axis size in tablet space: {x_limit}")
+                    break
+            time.sleep(0.1)
 
-    # Final results
-    logger.info("\n=== Calibration Results ===")
-    logger.info("Add these values to constants.py:")
-    logger.info(f"ORIGIN_POSITION = {angles}")
-    logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
-    logger.info(f"TABLET_CANVAS_SIZE_TABLETSPACE = ({x_limit}, {y_limit})")
+        # Move back to origin
+        robot.send_angles(angles)
+        time.sleep(1)
 
-    # Return to origin
-    robot.send_angles(angles)
+        # Calibrate Y-axis limit
+        logger.info("\n=== Calibrating Canvas Y-Axis Limit ===")
+        logger.info("1. Robot will enter floppy mode")
+        logger.info("2. Move pen to top edge of desired canvas area")
+        logger.info("3. Press SPACE when ready (q to quit)")
+        logger.info("4. Touch pen to tablet surface to see position")
+        robot._robot.release_all_servos()
+
+        while True:
+            print("\033[2J\033[H")  # Clear screen and move cursor to top
+            robot.print_position()
+            print("\nTablet Position:")
+            print_tablet_position(tablet)
+            print(f"\nY-axis distance from origin: {abs(tablet.state['y'] - tablet_y):.0f}")
+            
+            with Raw(sys.stdin):
+                key = sys.stdin.read(1)
+                if key == "q":
+                    logger.info("Calibration aborted")
+                    return
+                elif key == " ":
+                    if tablet.state["pressure"] == 0:
+                        logger.warning("No pressure detected - pen may not be touching tablet")
+                        continue
+                        
+                    y_limit = abs(tablet.state["y"] - tablet_y)
+                    logger.info(f"\nY-axis size in tablet space: {y_limit}")
+                    break
+            time.sleep(0.1)
+
+        # Final results
+        logger.info("\n=== Calibration Results ===")
+        logger.info("Add these values to constants.py:")
+        logger.info(f"ORIGIN_POSITION = {angles}")
+        logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
+        logger.info(f"TABLET_CANVAS_SIZE_TABLETSPACE = ({x_limit}, {y_limit})")
+
+        # Return to origin
+        robot.send_angles(angles)
 
 def test_canvas() -> None:
     """Test canvas calibration by rastering across the tablet surface"""
