@@ -65,10 +65,10 @@ TABLET_MAX_STEPS: int = 1000
 TABLET_CAPTURE_DURATION: float = 5.0
 
 # canvas is a specific sub-region of the tablet
-TABLET_CANVAS_ORIGIN: Tuple[int, int] = (30870, 20541) # center of canvas in tablet coordinates
-TABLET_CANVAS_SIZE_TABLETSPACE: Tuple[int, int] = (100, 100) # size of canvas in tablet coordinates
-TABLET_CANVAS_SIZE_PIXELSPACE: Tuple[int, int] = (224, 224) # size of canvas in pixel space
-TABLET_PEN_WIDTH: int = 10 # width of pen in tablet coordinates
+TABLET_CANVAS_ORIGIN: Tuple[int, int] = (30870, 20541)  # center of canvas in tablet coordinates
+TABLET_CANVAS_SIZE_TABLETSPACE: Tuple[int, int] = (80, 80)  # size of canvas in tablet coordinates
+TABLET_CANVAS_SIZE_PIXELSPACE: Tuple[int, int] = (80, 80)  # size of canvas in pixel space
+TABLET_PEN_WIDTH: int = 10  # width of pen in tablet coordinates
 
 # ANSI color codes for axis visualization
 AXIS_COLORS: dict[str, str] = {

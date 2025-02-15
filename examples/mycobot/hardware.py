@@ -554,6 +554,7 @@ def test_tablet() -> None:
     logger.info("2. Move pen around tablet surface")
     logger.info("3. Press SPACE to show current buffer")
     logger.info("4. Press q to quit")
+    robot.go_home()
     robot._robot.release_all_servos()
 
     class Raw:
