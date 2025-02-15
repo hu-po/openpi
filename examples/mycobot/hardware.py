@@ -132,7 +132,7 @@ def test_robot(speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     robot.go_home()
     logger.info("Robot test complete")
 
-def calibrate() -> None:
+def calibrate_robot() -> None:
     robot = Robot()
     positions: List[List[float]] = []
     logger.info("Recording up to 5 positions")
@@ -241,21 +241,6 @@ def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int
         coords = robot._robot.get_coords()
         robot.print_position()
 
-def spiral(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE, turns: int = 4) -> None:
-    robot = Robot(speed=speed, mode=mode)
-    robot.go_home()
-    robot.print_position()
-    coords = robot._robot.get_coords()
-    t = np.linspace(0, turns*2*np.pi, 100)
-    radius = scale * t / (8*np.pi)
-    x = coords[0] + radius * np.cos(t)
-    y = coords[1] + radius * np.sin(t)
-    for xi, yi in zip(x, y):
-        new_coords = [xi, yi, coords[2], coords[3], coords[4], coords[5]]
-        robot.send_coords(new_coords)
-        robot.print_position()
-    robot.go_home()
-
 class Tablet:
     def __init__(
         self,
@@ -272,14 +257,15 @@ class Tablet:
             "x": 0, "y": 0, "pressure": 0, "tilt_x": 0, "tilt_y": 0
         }
         self.device: Optional[evdev.InputDevice] = None
-        self._open_device(device_name)
+        if not self._open_device(device_name):
+            raise RuntimeError("No tablet device found")
         logger.info("Tablet state initialized: %s", self.state)
 
-    def _open_device(self, device_name: str) -> None:
+    def _open_device(self, device_name: str) -> bool:
         devices = evdev.list_devices()
         if not devices:
             logger.error("No input devices found")
-            return
+            return False
 
         logger.info("Available input devices:")
         for path in devices:
@@ -295,7 +281,7 @@ class Tablet:
 
         if not self.device:
             logger.error(f"Wacom pen device '{device_name}' not found")
-            return
+            return False
 
         # Log capabilities
         caps = dict(self.device.capabilities()[evdev.ecodes.EV_ABS])
@@ -305,6 +291,7 @@ class Tablet:
         logger.info(f"X range: {self.x_info.min} to {self.x_info.max}")
         logger.info(f"Y range: {self.y_info.min} to {self.y_info.max}")
         logger.info(f"Pressure range: {self.p_info.min} to {self.p_info.max}")
+        return True
 
     def update(self) -> None:
         """Poll for new events and update state"""
@@ -337,15 +324,30 @@ class Tablet:
         else:
             print("✏️  Pen hovering")
 
+    def print_buffer(self) -> None:
+        """Print ASCII visualization of the tablet buffer state"""
+        logger.info("Current tablet buffer state:")
+        h, w = self.buffer.shape
+        scale = 255 // 9  # Scale 0-255 to 0-9
+        
+        # Print column numbers
+        header = "   " + "".join(f"{i%10}" for i in range(w))
+        logger.info(header)
+        
+        # Print rows with row numbers
+        for i in range(h):
+            row = f"{i:2d}|"
+            for j in range(w):
+                # Convert 0-255 value to 0-9 range
+                val = min(9, self.buffer[i,j] // scale)
+                row += str(val)
+            logger.info(row)
+
 def calibrate_canvas() -> None:
     """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
     logger.info("Starting canvas calibration...")
     robot = Robot()
     tablet = Tablet()
-    
-    if not tablet.device:
-        logger.error("No tablet device found. Aborting calibration.")
-        return
 
     class Raw:
         def __init__(self, stream):
@@ -485,11 +487,6 @@ def test_canvas() -> None:
     logger.info("Starting canvas test...")
     robot = Robot()
     tablet = Tablet()
-
-    if not tablet.device:
-        logger.error("No tablet device found. Aborting test.")
-        return
-
     # Move to origin
     logger.info("Moving to canvas origin...")
     robot.send_angles(_c.ORIGIN_POSITION)
@@ -547,6 +544,45 @@ def test_canvas() -> None:
     robot.send_angles(_c.ORIGIN_POSITION)
     logger.info("Canvas test complete")
 
+def test_tablet() -> None:
+    """Test tablet by moving robot in floppy mode and visualizing buffer changes"""
+    logger.info("Starting tablet test...")
+    robot = Robot()
+    tablet = Tablet()
+    
+    logger.info("1. Robot will enter floppy mode")
+    logger.info("2. Move pen around tablet surface")
+    logger.info("3. Press SPACE to show current buffer")
+    logger.info("4. Press q to quit")
+    robot._robot.release_all_servos()
+
+    class Raw:
+        def __init__(self, stream):
+            self.stream = stream
+            self.fd = self.stream.fileno()
+        def __enter__(self):
+            self.original_stty = termios.tcgetattr(self.fd)
+            tty.setraw(self.fd)
+        def __exit__(self, type_, value, traceback):
+            termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
+
+    while True:
+        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        robot.print_position()
+        print("\nTablet Position:")
+        tablet.update()
+        tablet.print_position()
+        
+        with Raw(sys.stdin):
+            key = sys.stdin.read(1)
+            if key == "q":
+                logger.info("Test complete")
+                return
+            elif key == " ":
+                logger.info("\nCurrent Buffer State:")
+                tablet.print_buffer()
+        time.sleep(0.1)
+
 def main(args: Args) -> None:
     if args.debug:
         logger.setLevel(logging.DEBUG)
@@ -565,21 +601,18 @@ def main(args: Args) -> None:
     elif args.cmd == "sleep":
         robot = Robot(speed=args.speed, mode=args.mode)
         del robot
-    elif args.cmd == "calibrate":
-        calibrate()
+    elif args.cmd == "calibrate_robot":
+        calibrate_robot()
     elif args.cmd == "calibrate_zero":
         calibrate_zero()
     elif args.cmd == "square":
         square(scale=args.scale, speed=args.speed, mode=args.mode)
-    elif args.cmd == "spiral":
-        spiral(scale=args.scale, speed=args.speed, mode=args.mode)
     elif args.cmd == "calibrate_canvas":
         calibrate_canvas()
     elif args.cmd == "test_canvas":
         test_canvas()
     else:
         logger.error(f"Unknown command: {args.cmd}")
-        logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate, calibrate_zero, square, spiral, calibrate_canvas, test_canvas")
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, force=True)
