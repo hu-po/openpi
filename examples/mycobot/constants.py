@@ -29,7 +29,7 @@ JOINT_NAMES: list[str] = [
 # robot positions (from calibration process, these are in DEGREES)
 SLEEP_POSITION: list[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 HOME_POSITION: list[float] = [1.23, -88.94, -63.80, 60.29, 87.71, -5.80]
-ORIGIN_POSITION: list[float] = [-0.08, -108.98, -64.86, 88.5, 88.24, 1.49]
+ORIGIN_POSITION: list[float] = [0.96, -100.45, -63.01, 65.91, 82.52, -10.63]
 JOINT_LIMITS: dict[str, tuple[float, float]] = {
     "waist": (-34.98, 36.12),
     "shoulder": (-120.14, -88.94),
@@ -65,9 +65,9 @@ TABLET_MAX_STEPS: int = 1000
 TABLET_CAPTURE_DURATION: float = 5.0
 
 # canvas is a specific sub-region of the tablet
-TABLET_CANVAS_ORIGIN: Tuple[int, int] = (0, 0) # center of canvas in tablet coordinates
-TABLET_CANVAS_SIZE_TABLETSPACE: Tuple[int, int] = (224, 224) # size of canvas in tablet coordinates
-TABLET_CANVAS_SIZE_PIXELSPACE: Tuple[int, int] = (1024, 1024) # size of canvas in pixel space
+TABLET_CANVAS_ORIGIN: Tuple[int, int] = (30870, 20541) # center of canvas in tablet coordinates
+TABLET_CANVAS_SIZE_TABLETSPACE: Tuple[int, int] = (100, 100) # size of canvas in tablet coordinates
+TABLET_CANVAS_SIZE_PIXELSPACE: Tuple[int, int] = (224, 224) # size of canvas in pixel space
 TABLET_PEN_WIDTH: int = 10 # width of pen in tablet coordinates
 
 # ANSI color codes for axis visualization

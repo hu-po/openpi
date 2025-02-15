@@ -328,14 +328,14 @@ class Tablet:
             # Non-blocking read with no data available
             pass
 
-def print_tablet_position(tablet: Tablet) -> None:
-    """Print current tablet position and pressure information"""
-    print(f"Position: ({tablet.state['x']}, {tablet.state['y']})")
-    print(f"Pressure: {tablet.state['pressure']}")
-    if tablet.state['pressure'] > 0:
-        print("✏️  Pen touching surface")
-    else:
-        print("��️  Pen hovering")
+    def print_position(self) -> None:
+        """Print current tablet position and pressure information"""
+        print(f"Position: ({self.state['x']}, {self.state['y']})")
+        print(f"Pressure: {self.state['pressure']}")
+        if self.state['pressure'] > 0:
+            print("✏️  Pen touching surface")
+        else:
+            print("✏️  Pen hovering")
 
 def calibrate_canvas() -> None:
     """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
@@ -374,7 +374,7 @@ def calibrate_canvas() -> None:
         robot.print_position()
         print("\nTablet Position:")
         tablet.update()  # Poll for new events
-        print_tablet_position(tablet)
+        tablet.print_position()
         
         with Raw(sys.stdin):
             key = sys.stdin.read(1)
