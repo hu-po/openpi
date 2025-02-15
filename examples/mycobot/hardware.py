@@ -198,18 +198,19 @@ def square(distance: float = 10.0, speed: int = _c.ROBOT_SPEED) -> None:
     coords = robot._robot.get_coords()
     logger.info(f"Starting square movement from coords: {coords}")
     
-    # Using sync_send_coord for more precise movements
+    # TODO: try different modes and speeds
+    
     # Move in positive directions
     for axis in [1, 2, 3]:
         logger.info(f"Moving +{distance}mm along axis {axis}")
-        robot._robot.sync_send_coord(axis, coords[axis-1] + distance, speed)
+        robot._robot.sync_send_coords(axis, coords[axis-1] + distance, speed, mode=1)
         coords = robot._robot.get_coords()
         logger.info(f"Current position: {coords}")
     
     # Move in negative directions
     for axis in [1, 2, 3]:
         logger.info(f"Moving -{distance}mm along axis {axis}")
-        robot._robot.sync_send_coord(axis, coords[axis-1] - distance, speed)
+        robot._robot.sync_send_coords(axis, coords[axis-1] - distance, speed, mode=1)
         coords = robot._robot.get_coords()
         logger.info(f"Current position: {coords}")
 
