@@ -453,6 +453,14 @@ def test_tablet() -> None:
     else:
         logger.error("Tablet test failed - no device found")
 
+def print_tablet_position(tablet: Tablet) -> None:
+    x, y = tablet.state["x"], tablet.state["y"]
+    p = tablet.state["pressure"]
+    print(f"✏️  <x, y, pressure>")
+    print(f"  pos<{_c.AXIS_COLORS['x']}{x:.0f}{_c.AXIS_COLORS['reset']}, "
+          f"{_c.AXIS_COLORS['y']}{y:.0f}{_c.AXIS_COLORS['reset']}> (tablet units)")
+    print(f"  pressure: {p}")
+
 def calibrate_canvas() -> None:
     """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
     logger.info("Starting canvas calibration...")
@@ -482,9 +490,15 @@ def calibrate_canvas() -> None:
     logger.info("1. Robot will enter floppy mode")
     logger.info("2. Move pen to center of canvas")
     logger.info("3. Press SPACE when ready (q to quit)")
+    logger.info("4. Touch pen to tablet surface to see position")
     robot._robot.release_all_servos()
 
     while True:
+        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        robot.print_position()
+        print("\nTablet Position:")
+        print_tablet_position(tablet)
+        
         with Raw(sys.stdin):
             key = sys.stdin.read(1)
             if key == "q":
@@ -501,10 +515,15 @@ def calibrate_canvas() -> None:
                 tablet_x = tablet.state["x"]
                 tablet_y = tablet.state["y"]
                 
+                if tablet.state["pressure"] == 0:
+                    logger.warning("No pressure detected - pen may not be touching tablet")
+                    continue
+                    
                 logger.info("\nCanvas Origin Calibration Results:")
                 logger.info(f"ORIGIN_POSITION = {angles}")
                 logger.info(f"TABLET_CANVAS_ORIGIN = ({tablet_x}, {tablet_y})")
                 break
+        time.sleep(0.1)  # Small delay to prevent CPU spinning
 
     # Move to recorded origin
     robot.send_angles(angles)
@@ -515,18 +534,30 @@ def calibrate_canvas() -> None:
     logger.info("1. Robot will enter floppy mode")
     logger.info("2. Move pen to right edge of desired canvas area")
     logger.info("3. Press SPACE when ready (q to quit)")
+    logger.info("4. Touch pen to tablet surface to see position")
     robot._robot.release_all_servos()
 
     while True:
+        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        robot.print_position()
+        print("\nTablet Position:")
+        print_tablet_position(tablet)
+        print(f"\nX-axis distance from origin: {abs(tablet.state['x'] - tablet_x):.0f}")
+        
         with Raw(sys.stdin):
             key = sys.stdin.read(1)
             if key == "q":
                 logger.info("Calibration aborted")
                 return
             elif key == " ":
+                if tablet.state["pressure"] == 0:
+                    logger.warning("No pressure detected - pen may not be touching tablet")
+                    continue
+                    
                 x_limit = abs(tablet.state["x"] - tablet_x)
                 logger.info(f"\nX-axis size in tablet space: {x_limit}")
                 break
+        time.sleep(0.1)
 
     # Move back to origin
     robot.send_angles(angles)
@@ -537,18 +568,30 @@ def calibrate_canvas() -> None:
     logger.info("1. Robot will enter floppy mode")
     logger.info("2. Move pen to top edge of desired canvas area")
     logger.info("3. Press SPACE when ready (q to quit)")
+    logger.info("4. Touch pen to tablet surface to see position")
     robot._robot.release_all_servos()
 
     while True:
+        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        robot.print_position()
+        print("\nTablet Position:")
+        print_tablet_position(tablet)
+        print(f"\nY-axis distance from origin: {abs(tablet.state['y'] - tablet_y):.0f}")
+        
         with Raw(sys.stdin):
             key = sys.stdin.read(1)
             if key == "q":
                 logger.info("Calibration aborted")
                 return
             elif key == " ":
+                if tablet.state["pressure"] == 0:
+                    logger.warning("No pressure detected - pen may not be touching tablet")
+                    continue
+                    
                 y_limit = abs(tablet.state["y"] - tablet_y)
                 logger.info(f"\nY-axis size in tablet space: {y_limit}")
                 break
+        time.sleep(0.1)
 
     # Final results
     logger.info("\n=== Calibration Results ===")
