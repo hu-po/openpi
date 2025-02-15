@@ -208,51 +208,35 @@ def calibrate_zero() -> None:
     logger.info("\nCalibration complete for all servos")
 
 def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
-    """Draw a square pattern in 3D space starting from home position.
-    
-    Args:
-        scale: Size of square movements in mm (default: ROBOT_SCALE from constants)
-        speed: Movement speed (default: ROBOT_SPEED from constants)
-        mode: Movement mode (default: ROBOT_MODE from constants)
-    """
     robot = Robot(speed=speed, mode=mode)
     robot.go_home()
     
-    # Get starting coordinates
     coords = robot._robot.get_coords()
-    logger.info(f"Starting square movement from coords: {coords}")
+    logger.info("Starting square movement")
+    robot.print_position()
     
-    # Move in positive directions
     for axis in [1, 2, 3]:
         logger.info(f"Moving +{scale}mm along axis {axis}")
         new_coords = coords.copy()
         new_coords[axis-1] += scale
         robot.send_coords(new_coords)
         coords = robot._robot.get_coords()
-        logger.info(f"Current position: {coords}")
+        robot.print_position()
     
-    # Move in negative directions
     for axis in [1, 2, 3]:
         logger.info(f"Moving -{scale}mm along axis {axis}")
         new_coords = coords.copy()
         new_coords[axis-1] -= scale
         robot.send_coords(new_coords)
         coords = robot._robot.get_coords()
-        logger.info(f"Current position: {coords}")
+        robot.print_position()
 
 def spiral(waypoints: int = 100, scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
-    """Draw a spiral pattern starting from home position.
-    
-    Args:
-        waypoints: Number of points to use for spiral (default: 100)
-        scale: Maximum radius of spiral in mm (default: ROBOT_SCALE from constants)
-        speed: Movement speed (default: ROBOT_SPEED from constants)
-        mode: Movement mode (default: ROBOT_MODE from constants)
-    """
     robot = Robot(speed=speed, mode=mode)
     robot.go_home()
     coords = robot._robot.get_coords()
-    logger.info(f"Starting spiral from coords: {coords}")
+    logger.info("Starting spiral movement")
+    robot.print_position()
     
     for i in range(waypoints):
         theta = i * 4 * np.pi / waypoints
@@ -266,8 +250,8 @@ def spiral(waypoints: int = 100, scale: float = _c.ROBOT_SCALE, speed: int = _c.
         robot.send_coords(new_coords)
         time.sleep(0.1)
         
-        current_coords = robot._robot.get_coords()
-        logger.info(f"Spiral point {i+1}/{waypoints}: {current_coords}")
+        logger.info(f"Spiral point {i+1}/{waypoints}")
+        robot.print_position()
     
     robot.go_home()
 
