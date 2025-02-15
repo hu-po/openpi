@@ -113,7 +113,7 @@ class Robot:
         if coords:
             x, y, z, rx, ry, rz = coords
             print(f"\033[1m\033[36m🎯 Position:\033[0m")
-            print(f"  \033[32m📍 XYZ: ({x:6.2f}, {y:6.2f}, {z:6.2f})\033[0m")
+            print(f"  {_c.AXIS_COLORS['x']}X\033[0m: {x:6.2f}, {_c.AXIS_COLORS['y']}Y\033[0m: {y:6.2f}, {_c.AXIS_COLORS['z']}Z\033[0m: {z:6.2f}")
             print(f"  \033[33m🔄 RPY: ({rx:6.2f}, {ry:6.2f}, {rz:6.2f})\033[0m")
         else:
             print("\033[31m❌ Could not get robot position\033[0m")
@@ -219,7 +219,8 @@ def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int
     
     axis_names = ["x", "y", "z"]
     for axis in [1, 2, 3]:
-        logger.info(f"Moving +{scale}mm along {axis_names[axis-1]}-axis")
+        axis_name = axis_names[axis-1]
+        logger.info(f"Moving +{scale}mm along {_c.AXIS_COLORS[axis_name]}{axis_name}{_c.AXIS_COLORS['reset']}-axis")
         new_coords = coords.copy()
         new_coords[axis-1] += scale
         robot.send_coords(new_coords)
@@ -227,7 +228,8 @@ def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int
         robot.print_position()
     
     for axis in [1, 2, 3]:
-        logger.info(f"Moving -{scale}mm along {axis_names[axis-1]}-axis")
+        axis_name = axis_names[axis-1]
+        logger.info(f"Moving -{scale}mm along {_c.AXIS_COLORS[axis_name]}{axis_name}{_c.AXIS_COLORS['reset']}-axis")
         new_coords = coords.copy()
         new_coords[axis-1] -= scale
         robot.send_coords(new_coords)

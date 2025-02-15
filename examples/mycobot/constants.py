@@ -64,3 +64,11 @@ TABLET_DEVICE_NAME: str = "Wacom Intuos Pro L Pen"
 TABLET_CANVAS_SIZE: Tuple[int, int] = (1024, 1024)
 TABLET_MAX_STEPS: int = 1000
 TABLET_CAPTURE_DURATION: float = 5.0
+
+# ANSI color codes for axis visualization
+AXIS_COLORS: dict[str, str] = {
+    "x": "\033[31m",  # Red
+    "y": "\033[32m",  # Green
+    "z": "\033[34m",  # Blue
+    "reset": "\033[0m"  # Reset color
+}
