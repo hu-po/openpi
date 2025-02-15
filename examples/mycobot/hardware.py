@@ -522,14 +522,13 @@ def test_canvas() -> None:
     logger.info("Canvas test complete")
 
 def test_tablet() -> None:
-    """Test tablet by moving robot in floppy mode and visualizing buffer changes"""
     logger.info("Starting tablet test...")
     robot = Robot()
     tablet = Tablet()
     
     logger.info("1. Robot will enter floppy mode")
     logger.info("2. Move pen around tablet surface")
-    logger.info("3. Press SPACE to show current buffer")
+    logger.info("3. Press SPACE to show current canvas")
     logger.info("4. Press q to quit")
     robot.go_home()
     robot._robot.release_all_servos()
@@ -553,11 +552,7 @@ def test_tablet() -> None:
                 logger.info("Test complete")
                 return
             elif key == " ":
-                # Clear screen again before showing buffer
-                print("\033[2J\033[H", end="")
-                print("=== Canvas Buffer ===")
                 tablet.print_canvas()
-                time.sleep(1)  # Give user time to see the buffer
         
         time.sleep(0.1)
 
