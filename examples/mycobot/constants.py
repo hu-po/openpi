@@ -57,7 +57,7 @@ CAMERA_IMAGE_HEIGHT: int = 224
 CAMERA_IMAGE_WIDTH: int = 224
 
 # Tablet configuration
-DEFAULT_TABLET_DEVICE: str = "Wacom Intuos Pro L Pen"
-DEFAULT_CANVAS_SIZE: Tuple[int, int] = (1024, 1024)
-DEFAULT_MAX_STEPS: int = 1000
-DEFAULT_CAPTURE_DURATION: float = 5.0
+TABLET_DEVICE_NAME: str = "Wacom Intuos Pro L Pen"
+TABLET_CANVAS_SIZE: Tuple[int, int] = (1024, 1024)
+TABLET_MAX_STEPS: int = 1000
+TABLET_CAPTURE_DURATION: float = 5.0
