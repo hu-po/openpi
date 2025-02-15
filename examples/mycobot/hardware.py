@@ -120,9 +120,16 @@ class Robot:
         coords = self._robot.get_coords()
         if coords:
             x, y, z, rx, ry, rz = coords
-            print(f"\033[1m\033[36m🎯 Position:\033[0m")
-            print(f"  {_c.AXIS_COLORS['x']}{x:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['y']}{y:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['z']}{z:.0f}{_c.AXIS_COLORS['reset']}")
-            print(f"  {_c.AXIS_COLORS['x']}{rx:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['y']}{ry:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['z']}{rz:.0f}{_c.AXIS_COLORS['reset']})")
+            print(f"\033[1m🎯 Position: "
+                  f"{_c.AXIS_COLORS['x']}{x:.0f}, "
+                  f"{_c.AXIS_COLORS['y']}{y:.0f}, "
+                  f"{_c.AXIS_COLORS['z']}{z:.0f} | "
+                  f"{_c.AXIS_COLORS['x']}{rx:.0f}, "
+                  f"{_c.AXIS_COLORS['y']}{ry:.0f}, "
+                  f"{_c.AXIS_COLORS['z']}{rz:.0f}"
+                  f"{_c.AXIS_COLORS['reset']}")
+            print(f"  pos<{_c.AXIS_COLORS['x']}{x:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['y']}{y:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['z']}{z:.0f}{_c.AXIS_COLORS['reset']}> (mm)")
+            print(f"  rot<{_c.AXIS_COLORS['x']}{rx:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['y']}{ry:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['z']}{rz:.0f}{_c.AXIS_COLORS['reset']}> (deg)")
         else:
             print("\033[31m❌ Could not get robot position\033[0m")
 
