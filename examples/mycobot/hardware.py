@@ -33,16 +33,6 @@ class Args:
     scale: float = _c.ROBOT_SCALE
     """Scale for movement patterns in mm"""
 
-class Raw:
-    def __init__(self, stream):
-        self.stream = stream
-        self.fd = self.stream.fileno()
-    def __enter__(self):
-        self.original_stty = termios.tcgetattr(self.fd)
-        tty.setraw(self.fd)
-    def __exit__(self, type_, value, traceback):
-        termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
-
 class Camera:
     def __init__(
         self,
@@ -227,7 +217,35 @@ class Tablet:
                 row.append(str(val))
             logger.info("".join(row))
 
-# Test and calibration functions
+    def print_detailed_position(self) -> None:
+        """Print pen position in tablet space, pixel space and normalized canvas coordinates"""
+        # Get current position
+        x, y = self.state['x'], self.state['y']
+        
+        # Calculate normalized coordinates relative to canvas origin
+        x_norm = (x - _c.TABLET_CANVAS_ORIGIN[0]) / _c.TABLET_CANVAS_SIZE_TABLETSPACE[0]
+        y_norm = (y - _c.TABLET_CANVAS_ORIGIN[1]) / _c.TABLET_CANVAS_SIZE_TABLETSPACE[1]
+        
+        # Calculate pixel space coordinates
+        x_pixel = int(x_norm * _c.TABLET_CANVAS_SIZE_PIXELSPACE[0])
+        y_pixel = int(y_norm * _c.TABLET_CANVAS_SIZE_PIXELSPACE[1])
+        
+        logger.info("\n=== Pen Position ===")
+        logger.info(f"Tablet Space: ({x}, {y})")
+        logger.info(f"Pixel Space: ({x_pixel}, {y_pixel})")
+        logger.info(f"Normalized Canvas: ({x_norm:.3f}, {y_norm:.3f})")
+        logger.info(f"Pressure: {self.state['pressure']}")
+
+class KeyboardInput:
+    def __init__(self, stream):
+        self.stream = stream
+        self.fd = self.stream.fileno()
+    def __enter__(self):
+        self.original_stty = termios.tcgetattr(self.fd)
+        tty.setraw(self.fd)
+    def __exit__(self, type_, value, traceback):
+        termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
+
 def test_camera() -> None:
     camera = Camera()
     ret, frame = camera.read()
@@ -250,7 +268,7 @@ def calibrate_robot() -> None:
     robot._robot.release_all_servos() # floppy mode
     
     while len(positions) < 5:
-        with Raw(sys.stdin):
+        with KeyboardInput(sys.stdin):
             key = sys.stdin.read(1)
             if key == "q":
                 break
@@ -291,7 +309,7 @@ def calibrate_zero() -> None:
     for servo_id in range(1, 7):
         logger.info(f"\nCalibrating servo {servo_id} ({_c.JOINT_NAMES[servo_id-1]})")
         while True:
-            with Raw(sys.stdin):
+            with KeyboardInput(sys.stdin):
                 key = sys.stdin.read(1)
                 if key == "q":
                     logger.info("Calibration aborted")
@@ -354,7 +372,7 @@ def calibrate_canvas() -> None:
         tablet.update()  # Poll for new events
         tablet.print_position()
         
-        with Raw(sys.stdin):
+        with KeyboardInput(sys.stdin):
             key = sys.stdin.read(1)
             if key == "q":
                 logger.info("Calibration aborted")
@@ -399,7 +417,7 @@ def calibrate_canvas() -> None:
         tablet.update()
         print(f"\nX-axis distance from origin: {abs(tablet.state['x'] - tablet_x):.0f}")
         
-        with Raw(sys.stdin):
+        with KeyboardInput(sys.stdin):
             key = sys.stdin.read(1)
             if key == "q":
                 logger.info("Calibration aborted")
@@ -433,7 +451,7 @@ def calibrate_canvas() -> None:
         tablet.update()
         print(f"\nY-axis distance from origin: {abs(tablet.state['y'] - tablet_y):.0f}")
         
-        with Raw(sys.stdin):
+        with KeyboardInput(sys.stdin):
             key = sys.stdin.read(1)
             if key == "q":
                 logger.info("Calibration aborted")
@@ -533,21 +551,17 @@ def test_tablet() -> None:
     robot._robot.release_all_servos()
 
     while True:
-        print("\033[2J\033[H", end="")  # Keep this print for screen clearing
-        
         logger.info("=== Robot Status ===")
         robot.print_position()
-        
         logger.info("=== Tablet Status ===")
         tablet.update()
         tablet.print_position()
-        
-        with Raw(sys.stdin):
+        with KeyboardInput(sys.stdin):
             key = sys.stdin.read(1)
             if key == "q":
                 logger.info("Test complete")
                 return
-            elif key == " ":
+            else:
                 tablet.print_canvas()
         
         time.sleep(0.1)
