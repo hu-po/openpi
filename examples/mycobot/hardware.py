@@ -328,6 +328,15 @@ class Tablet:
             # Non-blocking read with no data available
             pass
 
+def print_tablet_position(tablet: Tablet) -> None:
+    """Print current tablet position and pressure information"""
+    print(f"Position: ({tablet.state['x']}, {tablet.state['y']})")
+    print(f"Pressure: {tablet.state['pressure']}")
+    if tablet.state['pressure'] > 0:
+        print("✏️  Pen touching surface")
+    else:
+        print("��️  Pen hovering")
+
 def calibrate_canvas() -> None:
     """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
     logger.info("Starting canvas calibration...")
