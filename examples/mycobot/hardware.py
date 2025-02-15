@@ -33,6 +33,16 @@ class Args:
     scale: float = _c.ROBOT_SCALE
     """Scale for movement patterns in mm"""
 
+class Raw:
+    def __init__(self, stream):
+        self.stream = stream
+        self.fd = self.stream.fileno()
+    def __enter__(self):
+        self.original_stty = termios.tcgetattr(self.fd)
+        tty.setraw(self.fd)
+    def __exit__(self, type_, value, traceback):
+        termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
+
 class Camera:
     def __init__(
         self,
@@ -52,14 +62,6 @@ class Camera:
 
     def release(self) -> None:
         self._cam.release()
-
-def test_camera() -> None:
-    camera = Camera()
-    ret, frame = camera.read()
-    logger.info(f"Camera test - frame shape: {frame.shape}")
-    cv2.imwrite('camera_test.png', frame)
-    logger.info("Saved test frame to camera_test.png")
-    camera.release()
 
 class Robot:
     def __init__(
@@ -126,120 +128,6 @@ class Robot:
             print(f"  rot<{_c.AXIS_COLORS['x']}{rx:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['y']}{ry:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['z']}{rz:.0f}{_c.AXIS_COLORS['reset']}> (deg)")
         else:
             print("\033[31m❌ Could not get robot position\033[0m")
-
-def test_robot(speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
-    robot = Robot(speed=speed, mode=mode)
-    robot.go_home()
-    logger.info("Robot test complete")
-
-def calibrate_robot() -> None:
-    robot = Robot()
-    positions: List[List[float]] = []
-    logger.info("Recording up to 5 positions")
-    logger.info("Move robot and press SPACE to record each position")
-    logger.info("Press q to finish recording")
-    robot._robot.release_all_servos() # floppy mode
-    
-    class Raw:
-        def __init__(self, stream):
-            self.stream = stream
-            self.fd = self.stream.fileno()
-        def __enter__(self):
-            self.original_stty = termios.tcgetattr(self.fd)
-            tty.setraw(self.fd)
-        def __exit__(self, type_, value, traceback):
-            termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
-
-    while len(positions) < 5:
-        with Raw(sys.stdin):
-            key = sys.stdin.read(1)
-            if key == "q":
-                break
-            elif key == " ":
-                angles = robot.get_angles()
-                if angles:
-                    positions.append(angles)
-                    logger.info(f"Position {len(positions)} recorded: {angles}")
-                else:
-                    logger.warning("Failed to get angles, try again")
-
-    if not positions:
-        logger.info("No positions recorded")
-        return
-
-    logger.info("\nRecorded positions:")
-    for i, pos in enumerate(positions, 1):
-        pos_str = f"[{', '.join(f'{angle:.2f}' for angle in pos)}]"
-        logger.info(f"Position {i}: {pos_str}")
-
-    positions_array = np.array(positions)
-    min_angles = positions_array.min(axis=0)
-    max_angles = positions_array.max(axis=0)
-    
-    logger.info("\nJoint limits for constants.py:")
-    logger.info("JOINT_LIMITS: dict[str, tuple[float, float]] = {")
-    for name, min_ang, max_ang in zip(_c.JOINT_NAMES, min_angles, max_angles):
-        logger.info(f'    "{name}": ({min_ang:.2f}, {max_ang:.2f}),')
-    logger.info("}")
-
-def calibrate_zero() -> None:
-    robot = Robot()
-    logger.info("Starting zero-point calibration for all servos")
-    logger.info("Move each joint to desired zero position and press SPACE")
-    logger.info("Press q to exit calibration")
-    robot._robot.release_all_servos()  # floppy mode
-    
-    class Raw:
-        def __init__(self, stream):
-            self.stream = stream
-            self.fd = self.stream.fileno()
-        def __enter__(self):
-            self.original_stty = termios.tcgetattr(self.fd)
-            tty.setraw(self.fd)
-        def __exit__(self, type_, value, traceback):
-            termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
-
-    for servo_id in range(1, 7):
-        logger.info(f"\nCalibrating servo {servo_id} ({_c.JOINT_NAMES[servo_id-1]})")
-        while True:
-            with Raw(sys.stdin):
-                key = sys.stdin.read(1)
-                if key == "q":
-                    logger.info("Calibration aborted")
-                    return
-                elif key == " ":
-                    try:
-                        robot._robot.set_servo_calibration(servo_id)
-                        logger.info(f"Zero point set for servo {servo_id}")
-                        break
-                    except Exception as e:
-                        logger.error(f"Failed to calibrate servo {servo_id}: {e}")
-                        continue
-
-    logger.info("\nCalibration complete for all servos")
-
-def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
-    robot = Robot(speed=speed, mode=mode)
-    robot.go_home()
-    robot.print_position()
-    coords = robot._robot.get_coords()
-    axis_names = ["x", "y", "z"]
-    for axis in [1, 2, 3]:
-        axis_name = axis_names[axis-1]
-        logger.info(f"Moving +{scale}mm along {_c.AXIS_COLORS[axis_name]}{axis_name}{_c.AXIS_COLORS['reset']}-axis")
-        new_coords = coords.copy()
-        new_coords[axis-1] += scale
-        robot.send_coords(new_coords)
-        coords = robot._robot.get_coords()
-        robot.print_position()
-    for axis in [1, 2, 3]:
-        axis_name = axis_names[axis-1]
-        logger.info(f"Moving -{scale}mm along {_c.AXIS_COLORS[axis_name]}{axis_name}{_c.AXIS_COLORS['reset']}-axis")
-        new_coords = coords.copy()
-        new_coords[axis-1] -= scale
-        robot.send_coords(new_coords)
-        coords = robot._robot.get_coords()
-        robot.print_position()
 
 class Tablet:
     def __init__(
@@ -338,21 +226,114 @@ class Tablet:
                 row.append(str(val))
             print("".join(row))
 
+# Test and calibration functions
+def test_camera() -> None:
+    camera = Camera()
+    ret, frame = camera.read()
+    logger.info(f"Camera test - frame shape: {frame.shape}")
+    cv2.imwrite('camera_test.png', frame)
+    logger.info("Saved test frame to camera_test.png")
+    camera.release()
+
+def test_robot(speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+    robot = Robot(speed=speed, mode=mode)
+    robot.go_home()
+    logger.info("Robot test complete")
+
+def calibrate_robot() -> None:
+    robot = Robot()
+    positions: List[List[float]] = []
+    logger.info("Recording up to 5 positions")
+    logger.info("Move robot and press SPACE to record each position")
+    logger.info("Press q to finish recording")
+    robot._robot.release_all_servos() # floppy mode
+    
+    while len(positions) < 5:
+        with Raw(sys.stdin):
+            key = sys.stdin.read(1)
+            if key == "q":
+                break
+            elif key == " ":
+                angles = robot.get_angles()
+                if angles:
+                    positions.append(angles)
+                    logger.info(f"Position {len(positions)} recorded: {angles}")
+                else:
+                    logger.warning("Failed to get angles, try again")
+
+    if not positions:
+        logger.info("No positions recorded")
+        return
+
+    logger.info("\nRecorded positions:")
+    for i, pos in enumerate(positions, 1):
+        pos_str = f"[{', '.join(f'{angle:.2f}' for angle in pos)}]"
+        logger.info(f"Position {i}: {pos_str}")
+
+    positions_array = np.array(positions)
+    min_angles = positions_array.min(axis=0)
+    max_angles = positions_array.max(axis=0)
+    
+    logger.info("\nJoint limits for constants.py:")
+    logger.info("JOINT_LIMITS: dict[str, tuple[float, float]] = {")
+    for name, min_ang, max_ang in zip(_c.JOINT_NAMES, min_angles, max_angles):
+        logger.info(f'    "{name}": ({min_ang:.2f}, {max_ang:.2f}),')
+    logger.info("}")
+
+def calibrate_zero() -> None:
+    robot = Robot()
+    logger.info("Starting zero-point calibration for all servos")
+    logger.info("Move each joint to desired zero position and press SPACE")
+    logger.info("Press q to exit calibration")
+    robot._robot.release_all_servos()  # floppy mode
+    
+    for servo_id in range(1, 7):
+        logger.info(f"\nCalibrating servo {servo_id} ({_c.JOINT_NAMES[servo_id-1]})")
+        while True:
+            with Raw(sys.stdin):
+                key = sys.stdin.read(1)
+                if key == "q":
+                    logger.info("Calibration aborted")
+                    return
+                elif key == " ":
+                    try:
+                        robot._robot.set_servo_calibration(servo_id)
+                        logger.info(f"Zero point set for servo {servo_id}")
+                        break
+                    except Exception as e:
+                        logger.error(f"Failed to calibrate servo {servo_id}: {e}")
+                        continue
+
+    logger.info("\nCalibration complete for all servos")
+
+def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+    robot = Robot(speed=speed, mode=mode)
+    robot.go_home()
+    robot.print_position()
+    coords = robot._robot.get_coords()
+    axis_names = ["x", "y", "z"]
+    for axis in [1, 2, 3]:
+        axis_name = axis_names[axis-1]
+        logger.info(f"Moving +{scale}mm along {_c.AXIS_COLORS[axis_name]}{axis_name}{_c.AXIS_COLORS['reset']}-axis")
+        new_coords = coords.copy()
+        new_coords[axis-1] += scale
+        robot.send_coords(new_coords)
+        coords = robot._robot.get_coords()
+        robot.print_position()
+    for axis in [1, 2, 3]:
+        axis_name = axis_names[axis-1]
+        logger.info(f"Moving -{scale}mm along {_c.AXIS_COLORS[axis_name]}{axis_name}{_c.AXIS_COLORS['reset']}-axis")
+        new_coords = coords.copy()
+        new_coords[axis-1] -= scale
+        robot.send_coords(new_coords)
+        coords = robot._robot.get_coords()
+        robot.print_position()
+
 def calibrate_canvas() -> None:
     """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
     logger.info("Starting canvas calibration...")
     robot = Robot()
     tablet = Tablet()
-
-    class Raw:
-        def __init__(self, stream):
-            self.stream = stream
-            self.fd = self.stream.fileno()
-        def __enter__(self):
-            self.original_stty = termios.tcgetattr(self.fd)
-            tty.setraw(self.fd)
-        def __exit__(self, type_, value, traceback):
-            termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
 
     # Move to home position first
     robot.go_home()
@@ -552,20 +533,16 @@ def test_tablet() -> None:
     robot.go_home()
     robot._robot.release_all_servos()
 
-    class Raw:
-        def __init__(self, stream):
-            self.stream = stream
-            self.fd = self.stream.fileno()
-        def __enter__(self):
-            self.original_stty = termios.tcgetattr(self.fd)
-            tty.setraw(self.fd)
-        def __exit__(self, type_, value, traceback):
-            termios.tcsetattr(self.fd, termios.TCSANOW, self.original_stty)
-
     while True:
-        print("\033[2J\033[H")  # Clear screen and move cursor to top
+        # Clear screen completely
+        print("\033[2J\033[H", end="")
+        
+        # Print robot status with separator
+        print("=== Robot Status ===")
         robot.print_position()
-        print("\nTablet Position:")
+        
+        # Print tablet status with separator
+        print("\n=== Tablet Status ===")
         tablet.update()
         tablet.print_position()
         
@@ -575,8 +552,12 @@ def test_tablet() -> None:
                 logger.info("Test complete")
                 return
             elif key == " ":
-                logger.info("\nCurrent Buffer State:")
+                # Clear screen again before showing buffer
+                print("\033[2J\033[H", end="")
+                print("=== Canvas Buffer ===")
                 tablet.print_canvas()
+                time.sleep(1)  # Give user time to see the buffer
+        
         time.sleep(0.1)
 
 def main(args: Args) -> None:
