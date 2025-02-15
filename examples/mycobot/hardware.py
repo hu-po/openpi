@@ -252,7 +252,7 @@ class Tablet:
         self.canvas_size_tabletspace = canvas_size_tabletspace
         self.canvas_size_pixelspace = canvas_size_pixelspace
         self.max_steps = max_steps
-        self.buffer = np.zeros(self.canvas_size_pixelspace, dtype=np.uint8)
+        self.canvas = np.zeros(self.canvas_size_pixelspace, dtype=np.uint8)
         self.state: Dict[str, int] = {
             "x": 0, "y": 0, "pressure": 0, "tilt_x": 0, "tilt_y": 0
         }
@@ -324,24 +324,19 @@ class Tablet:
         else:
             print("✏️  Pen hovering")
 
-    def print_buffer(self) -> None:
-        """Print ASCII visualization of the tablet buffer state"""
-        logger.info("Current tablet buffer state:")
-        h, w = self.buffer.shape
-        scale = 255 // 9  # Scale 0-255 to 0-9
-        
-        # Print column numbers
-        header = "   " + "".join(f"{i%10}" for i in range(w))
-        logger.info(header)
-        
-        # Print rows with row numbers
+    def print_canvas(self) -> None:
+        """Print ASCII visualization of the canvas state"""
+        h, w = self.canvas.shape
+        scale = 255 // 9
+        output = ["Current canvas state:"]
+        output.append("   " + "".join(f"{i%10}" for i in range(w)))
         for i in range(h):
             row = f"{i:2d}|"
             for j in range(w):
-                # Convert 0-255 value to 0-9 range
-                val = min(9, self.buffer[i,j] // scale)
+                val = min(9, self.canvas[i,j] // scale)
                 row += str(val)
-            logger.info(row)
+            output.append(row)
+        print("\n".join(output))
 
 def calibrate_canvas() -> None:
     """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
@@ -581,7 +576,7 @@ def test_tablet() -> None:
                 return
             elif key == " ":
                 logger.info("\nCurrent Buffer State:")
-                tablet.print_buffer()
+                tablet.print_canvas()
         time.sleep(0.1)
 
 def main(args: Args) -> None:
