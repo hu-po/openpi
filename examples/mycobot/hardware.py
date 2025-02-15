@@ -209,30 +209,44 @@ def calibrate_zero() -> None:
 
     logger.info("\nCalibration complete for all servos")
 
-def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+def square(waypoints: int = 100, scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     robot = Robot(speed=speed, mode=mode)
-    robot.go_home()
-    
+    # Start from origin instead of home
+    robot.send_coords(_c.ORIGIN_POSITION)
     coords = robot._robot.get_coords()
     logger.info("Starting square movement")
     robot.print_position()
     
-    axis_names = ["x", "y", "z"]
-    for axis in [1, 2, 3]:
-        logger.info(f"Moving +{scale}mm along {axis_names[axis-1]}-axis")
-        new_coords = coords.copy()
-        new_coords[axis-1] += scale
-        robot.send_coords(new_coords)
-        coords = robot._robot.get_coords()
-        robot.print_position()
+    # Define square vertices relative to start position
+    vertices = [
+        (scale, 0),    # right
+        (scale, scale),# up-right
+        (0, scale),    # up
+        (0, 0)        # back to start
+    ]
     
-    for axis in [1, 2, 3]:
-        logger.info(f"Moving -{scale}mm along {axis_names[axis-1]}-axis")
-        new_coords = coords.copy()
-        new_coords[axis-1] -= scale
-        robot.send_coords(new_coords)
-        coords = robot._robot.get_coords()
-        robot.print_position()
+    # Interpolate between vertices
+    points_per_side = waypoints // 4
+    for i in range(len(vertices)-1):
+        start_x, start_y = vertices[i]
+        end_x, end_y = vertices[i+1]
+        
+        for t in range(points_per_side):
+            # Linear interpolation between vertices
+            frac = t / points_per_side
+            x_offset = start_x + (end_x - start_x) * frac
+            y_offset = start_y + (end_y - start_y) * frac
+            
+            new_coords = coords.copy()
+            new_coords[0] += x_offset  # x-axis
+            new_coords[1] += y_offset  # y-axis
+            robot.send_coords(new_coords)
+            time.sleep(0.1)
+            
+            logger.info(f"Square point {i*points_per_side + t + 1}/{waypoints} - x_offset: {x_offset:.2f}mm, y_offset: {y_offset:.2f}mm")
+            robot.print_position()
+    
+    robot.go_home()
 
 def spiral(waypoints: int = 100, scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     robot = Robot(speed=speed, mode=mode)
@@ -465,7 +479,7 @@ def main(args: Args) -> None:
     elif args.cmd == "calibrate_zero":
         calibrate_zero()
     elif args.cmd == "square":
-        square(scale=args.scale, speed=args.speed, mode=args.mode)
+        square(waypoints=args.scale, speed=args.speed, mode=args.mode)
     elif args.cmd == "spiral":
         spiral(scale=args.scale, speed=args.speed, mode=args.mode)
     else:

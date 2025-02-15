@@ -29,6 +29,7 @@ JOINT_NAMES: list[str] = [
 # robot positions (from calibration process, these are in DEGREES)
 SLEEP_POSITION: list[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 HOME_POSITION: list[float] = [1.23, -88.94, -63.80, 60.29, 87.71, -5.80]
+ORIGIN_POSITION: list[float] = [-0.08, -108.98, -64.86, 88.5, 88.24, 1.49]
 JOINT_LIMITS: dict[str, tuple[float, float]] = {
     "waist": (-34.98, 36.12),
     "shoulder": (-120.14, -88.94),
