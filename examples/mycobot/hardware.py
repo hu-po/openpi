@@ -508,25 +508,40 @@ def test_canvas() -> None:
 
     logger.info(f"Testing {num_points}x{num_points} grid points...")
     
+    def wait_for_stable_reading(timeout: float = 2.0) -> Tuple[int, int]:
+        """Wait for stable tablet reading with timeout"""
+        start_time = time.time()
+        last_x, last_y = 0, 0
+        stable_count = 0
+        
+        while time.time() - start_time < timeout:
+            tablet.update()
+            if tablet.state["pressure"] > 0:
+                current_x, current_y = tablet.state["x"], tablet.state["y"]
+                if abs(current_x - last_x) < 10 and abs(current_y - last_y) < 10:
+                    stable_count += 1
+                    if stable_count > 5:  # Require 5 stable readings
+                        return current_x, current_y
+                else:
+                    stable_count = 0
+                last_x, last_y = current_x, current_y
+            time.sleep(0.05)
+        return 0, 0  # Return zeros if no stable reading
+
     # Raster pattern
     for i in range(num_points):
         for j in range(num_points):
-            # Calculate target position in tablet space
             target_x = _c.TABLET_CANVAS_ORIGIN[0] + (j * x_spacing)
             target_y = _c.TABLET_CANVAS_ORIGIN[1] + (i * y_spacing)
-            
-            # Move robot
             new_coords = coords.copy()
             new_coords[0] += j * x_spacing * _c.ROBOT_SCALE / _c.TABLET_CANVAS_SIZE_TABLETSPACE[0]
             new_coords[1] += i * y_spacing * _c.ROBOT_SCALE / _c.TABLET_CANVAS_SIZE_TABLETSPACE[1]
-            
             robot.send_coords(new_coords)
-            time.sleep(0.5)
-            
-            # Log position
+            actual_x, actual_y = wait_for_stable_reading()
             logger.info(f"Grid point ({i},{j})")
             logger.info(f"Target tablet pos: ({target_x:.1f}, {target_y:.1f})")
-            logger.info(f"Actual tablet pos: ({tablet.state['x']:.1f}, {tablet.state['y']:.1f})")
+            logger.info(f"Actual tablet pos: ({actual_x:.1f}, {actual_y:.1f})")
+            logger.info(f"Pressure: {tablet.state['pressure']}")
             
     # Return to origin
     robot.send_angles(_c.ORIGIN_POSITION)
