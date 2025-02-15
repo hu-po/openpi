@@ -259,12 +259,14 @@ class Tablet:
     def __init__(
         self,
         device_name: str = _c.TABLET_DEVICE_NAME,
-        canvas_size: Tuple[int, int] = _c.TABLET_CANVAS_SIZE,
+        canvas_size_tabletspace: Tuple[int, int] = _c.TABLET_CANVAS_SIZE_TABLETSPACE,
+        canvas_size_pixelspace: Tuple[int, int] = _c.TABLET_CANVAS_SIZE_PIXELSPACE,
         max_steps: int = _c.TABLET_MAX_STEPS,
     ) -> None:
-        self.canvas_size = canvas_size
+        self.canvas_size_tabletspace = canvas_size_tabletspace
+        self.canvas_size_pixelspace = canvas_size_pixelspace
         self.max_steps = max_steps
-        self.buffer = np.zeros(self.canvas_size, dtype=np.uint8)
+        self.buffer = np.zeros(self.canvas_size_pixelspace, dtype=np.uint8)
         self.state: Dict[str, int] = {
             "x": 0, "y": 0, "pressure": 0, "tilt_x": 0, "tilt_y": 0
         }
@@ -407,21 +409,33 @@ class Tablet:
         return min(max((value - min_val) / (max_val - min_val), 0), 1)
 
     def _map_coordinates(self, x: int, y: int, p: int):
-        norm_x = self._normalize(x, self.x_info.min, self.x_info.max)
-        norm_y = self._normalize(y, self.y_info.min, self.y_info.max)
+        # First normalize to tablet canvas space
+        x_rel = x - _c.TABLET_CANVAS_ORIGIN[0]
+        y_rel = y - _c.TABLET_CANVAS_ORIGIN[1]
+        
+        # Normalize relative to canvas size in tablet space
+        norm_x = x_rel / self.canvas_size_tabletspace[0]
+        norm_y = y_rel / self.canvas_size_tabletspace[1]
         norm_p = self._normalize(p, self.p_info.min, self.p_info.max)
-        mapped_x = int(norm_x * (self.canvas_size[0] - 1))
-        mapped_y = int(norm_y * (self.canvas_size[1] - 1))
-        intensity = norm_p
-        return mapped_x, mapped_y, intensity
+        
+        # Map to pixel space
+        mapped_x = int(norm_x * (self.canvas_size_pixelspace[0] - 1))
+        mapped_y = int(norm_y * (self.canvas_size_pixelspace[1] - 1))
+        
+        # Clamp values to valid range
+        mapped_x = max(0, min(mapped_x, self.canvas_size_pixelspace[0] - 1))
+        mapped_y = max(0, min(mapped_y, self.canvas_size_pixelspace[1] - 1))
+        
+        return mapped_x, mapped_y, norm_p
 
     def draw_point(self, x: int, y: int, intensity: float) -> None:
-        if 0 <= x < self.canvas_size[0] and 0 <= y < self.canvas_size[1]:
-            y = self.canvas_size[1] - 1 - y
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
+        if 0 <= x < self.canvas_size_pixelspace[0] and 0 <= y < self.canvas_size_pixelspace[1]:
+            y = self.canvas_size_pixelspace[1] - 1 - y  # Flip y-axis
+            pen_width = _c.TABLET_PEN_WIDTH
+            for dx in range(-pen_width//2, pen_width//2 + 1):
+                for dy in range(-pen_width//2, pen_width//2 + 1):
                     new_x, new_y = x + dx, y + dy
-                    if (0 <= new_x < self.canvas_size[0]) and (0 <= new_y < self.canvas_size[1]):
+                    if (0 <= new_x < self.canvas_size_pixelspace[0]) and (0 <= new_y < self.canvas_size_pixelspace[1]):
                         self.buffer[new_y, new_x] = min(255, int((1.0 - intensity) * 255))
 
     def display_result(self) -> None:
