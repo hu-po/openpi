@@ -327,16 +327,16 @@ class Tablet:
     def print_canvas(self) -> None:
         """Print ASCII visualization of the canvas state"""
         h, w = self.canvas.shape
-        scale = 255 // 9
-        output = ["Current canvas state:"]
-        output.append("   " + "".join(f"{i%10}" for i in range(w)))
+        scale = 255 // 9  # Scale pixel values to 0-9 range
+        header = "Canvas State:"
+        print(f"\n{header}")
+        print("    " + "-" * w)  # Separator line
         for i in range(h):
-            row = f"{i:2d}|"
+            row = [f"{i:2d} |"]  # Row number with padding
             for j in range(w):
                 val = min(9, self.canvas[i,j] // scale)
-                row += str(val)
-            output.append(row)
-        print("\n".join(output))
+                row.append(str(val))
+            print("".join(row))
 
 def calibrate_canvas() -> None:
     """Guide user through calibrating the TABLET and ROBOT variables in constants.py"""
