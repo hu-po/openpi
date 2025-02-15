@@ -23,6 +23,10 @@ class Args:
     """Command to run (i.e. test, test_camera, test_robot, test_tablet, sleep, calibrate, calibrate_zero, square)"""
     debug: bool = False
     """Debug mode"""
+    speed: int = _c.ROBOT_SPEED
+    """Movement speed"""
+    mode: int = _c.ROBOT_MODE
+    """Movement mode"""
 
 class Camera:
     def __init__(
@@ -56,31 +60,40 @@ class Robot:
     def __init__(
         self,
         port: str = _c.ROBOT_PORT,
-        baudrate: int = _c.ROBOT_BAUDRATE
+        baudrate: int = _c.ROBOT_BAUDRATE,
+        speed: int = _c.ROBOT_SPEED,
+        mode: int = _c.ROBOT_MODE
     ) -> None:
         self._robot = MyCobot(port=port, baudrate=baudrate)
         self._robot.set_color(0, 255, 0)
+        self._speed = speed
+        self._mode = mode
         logger.info("🤖 MyCobotRobot initialized")
 
     def get_angles(self) -> List[float]:
         return self._robot.get_angles()
 
-    def send_angles(self, angles: List[float], speed: Union[int, float] = _c.ROBOT_SPEED) -> None:
+    def send_angles(self, angles: List[float], speed: Optional[Union[int, float]] = None) -> None:
+        speed = speed or self._speed
         self._robot.send_angles(angles, speed)
 
-    def send_coords(self, coords: List[float], speed: Union[int, float] = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+    def send_coords(self, coords: List[float], speed: Optional[Union[int, float]] = None, mode: Optional[int] = None) -> None:
+        speed = speed or self._speed
+        mode = mode or self._mode
         self._robot.sync_send_coords(coords, speed, mode=mode, timeout=_c.ROBOT_MOVE_TIMEOUT)
         
-    def go_home(self) -> None:
+    def go_home(self, speed: Optional[Union[int, float]] = None) -> None:
         logger.info("Moving to home position...")
+        speed = speed or self._speed
         self._robot.set_color(255, 255, 0)
-        self._robot.sync_send_angles(_c.HOME_POSITION, _c.ROBOT_SPEED, timeout=_c.ROBOT_MOVE_TIMEOUT)
+        self._robot.sync_send_angles(_c.HOME_POSITION, speed, timeout=_c.ROBOT_MOVE_TIMEOUT)
         self._robot.set_color(0, 255, 0)
         logger.info("Done")
 
-    def go_sleep(self) -> None:
+    def go_sleep(self, speed: Optional[Union[int, float]] = None) -> None:
         logger.info("Moving to sleep position...")
-        self._robot.send_angles(_c.SLEEP_POSITION, _c.ROBOT_SPEED)
+        speed = speed or self._speed
+        self._robot.send_angles(_c.SLEEP_POSITION, speed)
         time.sleep(3)
         logger.info("Releasing servos...")
         self._robot.release_all_servos()
@@ -91,8 +104,8 @@ class Robot:
         self.go_sleep()
         self._robot.set_color(0, 0, 0)
 
-def test_robot() -> None:
-    robot = Robot()
+def test_robot(speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
+    robot = Robot(speed=speed, mode=mode)
     robot.go_home()
     logger.info("Robot test complete")
 
@@ -182,14 +195,15 @@ def calibrate_zero() -> None:
 
     logger.info("\nCalibration complete for all servos")
 
-def square(distance: float = 10.0, speed: int = _c.ROBOT_SPEED) -> None:
+def square(distance: float = 10.0, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     """Draw a square pattern in 3D space starting from home position.
     
     Args:
         distance: Distance in mm for each movement (default: 10.0)
         speed: Movement speed (default: ROBOT_SPEED from constants)
+        mode: Movement mode (default: ROBOT_MODE from constants)
     """
-    robot = Robot()
+    robot = Robot(speed=speed, mode=mode)
     robot.go_home()
     
     # Get starting coordinates
@@ -214,37 +228,35 @@ def square(distance: float = 10.0, speed: int = _c.ROBOT_SPEED) -> None:
         coords = robot._robot.get_coords()
         logger.info(f"Current position: {coords}")
 
-def spiral(waypoints: int = 100, max_radius: float = 10.0) -> None:
+def spiral(waypoints: int = 100, max_radius: float = 10.0, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     """Draw a spiral pattern starting from home position.
     
     Args:
         waypoints: Number of points to use for spiral (default: 100)
         max_radius: Maximum radius of spiral in mm (default: 50.0)
+        speed: Movement speed (default: ROBOT_SPEED from constants)
+        mode: Movement mode (default: ROBOT_MODE from constants)
     """
-    robot = Robot()
+    robot = Robot(speed=speed, mode=mode)
     robot.go_home()
     coords = robot._robot.get_coords()
     logger.info(f"Starting spiral from coords: {coords}")
     
     for i in range(waypoints):
-        # Calculate angle and radius for this point
         theta = i * 4 * np.pi / waypoints
         radius = (i / waypoints) * max_radius
-        
-        # Calculate x,y offset using parametric equations
         x_offset = radius * np.cos(theta)
         y_offset = radius * np.sin(theta)
         
-        # Move to new position
-        robot._robot.send_coord(1, coords[0] + x_offset, _c.ROBOT_SPEED)
-        robot._robot.send_coord(2, coords[1] + y_offset, _c.ROBOT_SPEED)
+        new_coords = coords.copy()
+        new_coords[0] += x_offset
+        new_coords[1] += y_offset
+        robot.send_coords(new_coords)
         time.sleep(0.1)
         
-        # Log current position
-        new_coords = robot._robot.get_coords()
-        logger.info(f"Spiral point {i+1}/{waypoints}: {new_coords}")
+        current_coords = robot._robot.get_coords()
+        logger.info(f"Spiral point {i+1}/{waypoints}: {current_coords}")
     
-    # Return to start position
     robot.go_home()
 
 
@@ -438,25 +450,25 @@ def main(args: Args) -> None:
     if args.cmd == "test":
         logger.info("Running all hardware tests...")
         test_camera()
-        test_robot()
+        test_robot(speed=args.speed, mode=args.mode)
         test_tablet()
     elif args.cmd == "test_camera":
         test_camera()
     elif args.cmd == "test_robot":
-        test_robot()
+        test_robot(speed=args.speed, mode=args.mode)
     elif args.cmd == "test_tablet":
         test_tablet()
     elif args.cmd == "sleep":
-        robot = Robot()
+        robot = Robot(speed=args.speed, mode=args.mode)
         del robot
     elif args.cmd == "calibrate":
         calibrate()
     elif args.cmd == "calibrate_zero":
         calibrate_zero()
     elif args.cmd == "square":
-        square()
+        square(speed=args.speed, mode=args.mode)
     elif args.cmd == "spiral":
-        spiral()
+        spiral(speed=args.speed, mode=args.mode)
     else:
         logger.error(f"Unknown command: {args.cmd}")
         logger.info("Available commands: test, test_camera, test_robot, test_tablet, sleep, calibrate, calibrate_zero, square, spiral")
