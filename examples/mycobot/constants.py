@@ -11,8 +11,8 @@ DT: float = 0.02  # 50Hz
 # Robot settings
 ROBOT_PORT: str = "/dev/ttyAMA0"
 ROBOT_BAUDRATE: int = 1000000
-ROBOT_SPEED: int = 80  # Default movement speed (percentage)
-ROBOT_MOVE_TIMEOUT: int = 6  # seconds
+ROBOT_SPEED: int = 60  # Default movement speed (percentage)
+ROBOT_MOVE_TIMEOUT: int = 3  # seconds
 ROBOT_MODE: int = 1  # 0 = joint mode, 1 = Cartesian mode
 ROBOT_SCALE: float = 20.0  # Default scale for movement patterns in mm
 

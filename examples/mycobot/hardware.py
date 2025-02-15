@@ -217,8 +217,9 @@ def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int
     logger.info("Starting square movement")
     robot.print_position()
     
+    axis_names = ["x", "y", "z"]
     for axis in [1, 2, 3]:
-        logger.info(f"Moving +{scale}mm along axis {axis}")
+        logger.info(f"Moving +{scale}mm along {axis_names[axis-1]}-axis")
         new_coords = coords.copy()
         new_coords[axis-1] += scale
         robot.send_coords(new_coords)
@@ -226,7 +227,7 @@ def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int
         robot.print_position()
     
     for axis in [1, 2, 3]:
-        logger.info(f"Moving -{scale}mm along axis {axis}")
+        logger.info(f"Moving -{scale}mm along {axis_names[axis-1]}-axis")
         new_coords = coords.copy()
         new_coords[axis-1] -= scale
         robot.send_coords(new_coords)
@@ -247,12 +248,12 @@ def spiral(waypoints: int = 100, scale: float = _c.ROBOT_SCALE, speed: int = _c.
         y_offset = radius * np.sin(theta)
         
         new_coords = coords.copy()
-        new_coords[0] += x_offset
-        new_coords[1] += y_offset
+        new_coords[0] += x_offset  # x-axis
+        new_coords[1] += y_offset  # y-axis
         robot.send_coords(new_coords)
         time.sleep(0.1)
         
-        logger.info(f"Spiral point {i+1}/{waypoints}")
+        logger.info(f"Spiral point {i+1}/{waypoints} - x_offset: {x_offset:.2f}mm, y_offset: {y_offset:.2f}mm")
         robot.print_position()
     
     robot.go_home()
