@@ -120,14 +120,7 @@ class Robot:
         coords = self._robot.get_coords()
         if coords:
             x, y, z, rx, ry, rz = coords
-            print(f"\033[1m🎯 Position: "
-                  f"{_c.AXIS_COLORS['x']}{x:.0f}, "
-                  f"{_c.AXIS_COLORS['y']}{y:.0f}, "
-                  f"{_c.AXIS_COLORS['z']}{z:.0f} | "
-                  f"{_c.AXIS_COLORS['x']}{rx:.0f}, "
-                  f"{_c.AXIS_COLORS['y']}{ry:.0f}, "
-                  f"{_c.AXIS_COLORS['z']}{rz:.0f}"
-                  f"{_c.AXIS_COLORS['reset']}")
+            print(f"🎯 <x, y, z, rx, ry, rz>")
             print(f"  pos<{_c.AXIS_COLORS['x']}{x:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['y']}{y:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['z']}{z:.0f}{_c.AXIS_COLORS['reset']}> (mm)")
             print(f"  rot<{_c.AXIS_COLORS['x']}{rx:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['y']}{ry:.0f}{_c.AXIS_COLORS['reset']}, {_c.AXIS_COLORS['z']}{rz:.0f}{_c.AXIS_COLORS['reset']}> (deg)")
         else:
@@ -227,7 +220,6 @@ def calibrate_zero() -> None:
 def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     robot = Robot(speed=speed, mode=mode)
     robot.go_home()
-    logger.info("Starting square movement")
     robot.print_position()
     coords = robot._robot.get_coords()
     axis_names = ["x", "y", "z"]
@@ -250,8 +242,7 @@ def square(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int
 
 def spiral(scale: float = _c.ROBOT_SCALE, speed: int = _c.ROBOT_SPEED, mode: int = _c.ROBOT_MODE) -> None:
     robot = Robot(speed=speed, mode=mode)
-    robot.go_origin()
-    logger.info("Starting square movement")
+    robot.go_home()
     robot.print_position()
     coords = robot._robot.get_coords()
     # Generate spiral points (4 turns = 8π radians)
