@@ -205,27 +205,27 @@ class Tablet:
 
     def print_position(self) -> None:
         """Print current tablet position and pressure information"""
-        print(f"Position: ({self.state['x']}, {self.state['y']})")
-        print(f"Pressure: {self.state['pressure']}")
+        logger.info(f"Position: ({self.state['x']}, {self.state['y']})")
+        logger.info(f"Pressure: {self.state['pressure']}")
         if self.state['pressure'] > 0:
-            print("✏️  Pen touching surface")
+            logger.info("✏️  Pen touching surface")
         else:
-            print("✏️  Pen hovering")
+            logger.info("✏️  Pen hovering")
 
     def print_canvas(self) -> None:
         """Print ASCII visualization of the canvas state"""
         h, w = self.canvas.shape
         scale = 255 // 9  # Scale pixel values to 0-9 range
         header = "Canvas State:"
-        print(f"\n{header}")
-        print("    " + "-" * w)  # Separator line
+        separator = "-" * w
+        logger.info(f"\n{header}")
+        logger.info(separator)
         for i in range(h):
             row = []
             for j in range(w):
                 val = min(9, self.canvas[i,j] // scale)
                 row.append(str(val))
-            row.append("\n")
-            print("".join(row))
+            logger.info("".join(row))
 
 # Test and calibration functions
 def test_camera() -> None:
@@ -349,7 +349,6 @@ def calibrate_canvas() -> None:
     robot._robot.release_all_servos()
 
     while True:
-        print("\033[2J\033[H")  # Clear screen and move cursor to top
         robot.print_position()
         print("\nTablet Position:")
         tablet.update()  # Poll for new events
@@ -534,15 +533,12 @@ def test_tablet() -> None:
     robot._robot.release_all_servos()
 
     while True:
-        # Clear screen completely
-        print("\033[2J\033[H", end="")
+        print("\033[2J\033[H", end="")  # Keep this print for screen clearing
         
-        # Print robot status with separator
-        print("=== Robot Status ===")
+        logger.info("=== Robot Status ===")
         robot.print_position()
         
-        # Print tablet status with separator
-        print("\n=== Tablet Status ===")
+        logger.info("=== Tablet Status ===")
         tablet.update()
         tablet.print_position()
         
