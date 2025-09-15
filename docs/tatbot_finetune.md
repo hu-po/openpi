@@ -138,7 +138,7 @@ uv run scripts/serve_policy.py policy:checkpoint \
 
 - Robot client on Intel NUC (Tatbot + LeRobot):
   - Install the client: `pip install -e packages/openpi-client`
-  - Run the Tatbot inference loop (maps your cameras to ALOHA keys and executes action chunks open‑loop):
+  - Run the Tatbot inference loop (maps your cameras to ALOHA keys and executes action chunks open‑loop). If using RealSense, pass serial numbers to enable camera streams directly without ROS:
 
 ```bash
 uv run python examples/tatbot/infer.py \
@@ -148,13 +148,17 @@ uv run python examples/tatbot/infer.py \
   --arm_r_config ~/tatbot/configs/right.yaml \
   --home_pos_l 0 -1.5 1.5 0 0 0 0.5 \
   --home_pos_r 0 -1.5 1.5 0 0 0 0.5 \
-  --left_cam realsense1 --right_cam realsense2 --high_cam overhead
+  --left_cam realsense1 --right_cam realsense2 --high_cam overhead \
+  --enable_realsense \
+  --rs_left_serial <LEFT_RS_SERIAL> \
+  --rs_right_serial <RIGHT_RS_SERIAL> \
+  --rs_high_serial <OVERHEAD_RS_SERIAL>
 ```
 
 Notes
-- Expected inputs for Tatbot pi‑0.5: `cam_high` (required), `cam_left_wrist`, `cam_right_wrist`, 14‑D state, `prompt` string.
-- If no overhead camera, the script duplicates the left wrist image as `cam_high`.
-- Images are pre‑resized to 224 on the client to reduce bandwidth; server handles normalization.
+- Inputs for Tatbot pi‑0.5: `cam_high` (required), `cam_left_wrist`, `cam_right_wrist`, 14‑D state, `prompt`.
+- If no overhead camera, `--high_cam` can be omitted and the script duplicates the left wrist image as `cam_high`.
+- Client pre‑resizes images to 224; server performs the final normalization and any additional resizing.
 
 Tips
 - Ensure both machines can ping each other; open port 8000.

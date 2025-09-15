@@ -33,6 +33,7 @@ from openpi_client import websocket_client_policy
 # Tatbot + LeRobot
 from lerobot.robots import make_robot_from_config
 from lerobot.robots.tatbot.config_tatbot import TatbotConfig
+from lerobot.cameras.realsense import RealSenseCameraConfig
 
 
 def prep_image(img: np.ndarray, size: int = 224) -> np.ndarray:
@@ -64,6 +65,15 @@ class Args:
     right_cam: str = "realsense2"
     high_cam: Optional[str] = None  # If None, duplicates left_cam as cam_high
 
+    # Optional RealSense setup (no ROS): provide serials to enable camera streams
+    enable_realsense: bool = False
+    rs_left_serial: Optional[str] = None
+    rs_right_serial: Optional[str] = None
+    rs_high_serial: Optional[str] = None
+    rs_fps: int = 10
+    rs_width: int = 640
+    rs_height: int = 480
+
     # Loop
     max_hz: float = 10.0
     max_steps: int = 2000
@@ -78,6 +88,25 @@ def main(args: Args) -> None:
     logging.info(f"Connected to policy server. Metadata: {meta}")
 
     # Configure Tatbot
+    # Build optional RealSense camera config map
+    rs_cams = {}
+    if args.enable_realsense:
+        def cfg_rs(name: str, serial: Optional[str]) -> Optional[RealSenseCameraConfig]:
+            if serial is None:
+                return None
+            return RealSenseCameraConfig(
+                fps=args.rs_fps,
+                width=args.rs_width,
+                height=args.rs_height,
+                serial_number_or_name=serial,
+            )
+        if (c := cfg_rs(args.left_cam, args.rs_left_serial)) is not None:
+            rs_cams[args.left_cam] = c
+        if (c := cfg_rs(args.right_cam, args.rs_right_serial)) is not None:
+            rs_cams[args.right_cam] = c
+        if args.high_cam is not None and (c := cfg_rs(args.high_cam, args.rs_high_serial)) is not None:
+            rs_cams[args.high_cam] = c
+
     cfg = TatbotConfig(
         ip_address_l=args.ip_address_l,
         ip_address_r=args.ip_address_r,
@@ -87,7 +116,7 @@ def main(args: Args) -> None:
         connection_timeout=args.connection_timeout,
         home_pos_l=args.home_pos_l,
         home_pos_r=args.home_pos_r,
-        rs_cameras={},  # camera connections are managed inside tatbot setup
+        rs_cameras=rs_cams,
         ip_cameras={},
     )
     robot = make_robot_from_config(cfg)
@@ -167,4 +196,3 @@ def main(args: Args) -> None:
 
 if __name__ == "__main__":
     tyro.cli(main)
-
