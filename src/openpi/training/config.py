@@ -847,6 +847,48 @@ _CONFIGS = [
         batch_size=64,
     ),
     #
+    # Tatbot finetuning config (LeRobot dataset on Trossen/WXAI arms).
+    #
+    TrainConfig(
+        name="pi05_tatbot",
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_dim=32,  # adjust to your robot action dimension
+            action_horizon=16,
+        ),
+        data=LeRobotAlohaDataConfig(
+            repo_id="<your-hf-username>/tatbot_wow_pi05_aloha",
+            assets=AssetsConfig(
+                assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
+                asset_id="trossen",
+            ),
+            base_config=DataConfig(prompt_from_task=True),
+            # Map dataset keys to ALOHA inputs: use cam_high/cam_low, state, action
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_low": "observation.images.cam_low",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                        }
+                    )
+                ]
+            ),
+        ),
+        weight_loader=weight_loaders.CheckpointWeightLoader(
+            "gs://openpi-assets/checkpoints/pi05_base/params"
+        ),
+        num_train_steps=50_000,
+        batch_size=256,
+        log_interval=100,
+        save_interval=2000,
+        ema_decay=0.999,
+    ),
+    #
     # Fine-tuning DROID configs.
     #
     TrainConfig(
