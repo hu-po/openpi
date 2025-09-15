@@ -151,3 +151,26 @@ Tips
 - Ensure both machines can ping each other; open port 8000.
 - Match `action_horizon` between training and client (`examples/aloha_real/main.py`).
 - For non‑ALOHA key naming, adjust `repack_transforms` in your TrainConfig to map dataset keys to the expected fields.
+
+## Full vs LoRA Finetuning (pi‑0.5)
+- Full finetune: Recommended when you have ample compute (e.g., H100). Default `pi05_*` configs in this repo use full finetuning with EMA; best performance and flexibility.
+- LoRA finetune: Recommended for low‑memory setups or fast iteration. Enable via `Pi0Config(..., paligemma_variant="gemma_2b_lora", action_expert_variant="gemma_300m_lora")` and set `freeze_filter=Pi0Config(...).get_freeze_filter()`; disable EMA.
+- Practical guidance: Keep `prompt_from_task=True`, map images to `cam_high` + wrist views, and compute dataset‑specific norm stats.
+
+## Local LoRA Sweep (Dev Box)
+- Use the provided low‑mem config `pi05_tatbot_low_mem` for quick local runs (batch=1, smaller `action_horizon`/`max_token_len`).
+- Recommended env to reduce VRAM preallocation:
+  - `export XLA_PYTHON_CLIENT_PREALLOCATE=false`
+  - `export XLA_PYTHON_CLIENT_ALLOCATOR=platform`
+- Run a small WANDB sweep locally (edits allowed):
+
+```bash
+wandb sweep sweeps/tatbot_pi05_lora.yaml   # shows a SWEEP_ID
+wandb agent $WANDB_ENTITY/$WANDB_PROJECT/SWEEP_ID
+```
+
+This sweep varies LR, warmup, clip norm, and small sequence sizes for memory safety. For cloud H100 runs, switch back to `pi05_tatbot` with larger sequences and batch sizes, and sweep LR/warmup/EMA.
+
+Notes on sweep checkpoints
+- The sweep command uses `--exp_name=sweep-${wandb.run.id}`.
+- Train script expands that placeholder (or appends a short random suffix when needed) so each run writes to a unique checkpoint directory, avoiding collisions without deleting prior runs.

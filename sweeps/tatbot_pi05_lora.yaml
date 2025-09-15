@@ -1,0 +1,21 @@
+method: bayes
+metric: { name: loss, goal: minimize }
+parameters:
+  lr_schedule.peak_lr: { values: [1.0e-5, 2.5e-5, 5.0e-5] }
+  lr_schedule.warmup_steps: { values: [200, 500, 1000] }
+  optimizer.clip_gradient_norm: { values: [0.5, 1.0, 2.0] }
+  model.max_token_len: { values: [96, 120] }
+  model.action_horizon: { values: [6, 8] }
+command:
+  - uv
+  - run
+  - python
+  - ${program}
+  - pi05_tatbot_low_mem
+  - --exp_name
+  - sweep-${wandb.run.id}
+  - --overwrite
+  - --num_workers
+  - "0"
+  - ${args}
+program: scripts/train.py

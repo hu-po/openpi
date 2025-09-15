@@ -1,4 +1,7 @@
 import dataclasses
+import os
+import time
+import uuid
 import functools
 import logging
 import platform
@@ -194,6 +197,16 @@ def train_step(
 def main(config: _config.TrainConfig):
     init_logging()
     logging.info(f"Running on: {platform.node()}")
+
+    # Ensure unique exp_name under sweep/agent runs so checkpoints don't collide.
+    exp_name = config.exp_name
+    if "${wandb.run.id}" in exp_name:
+        run_id = os.getenv("WANDB_RUN_ID", uuid.uuid4().hex[:8])
+        exp_name = exp_name.replace("${wandb.run.id}", run_id)
+    elif os.getenv("WANDB_SWEEP_ID") and exp_name.startswith("sweep-"):
+        exp_name = f"{exp_name}-{uuid.uuid4().hex[:8]}"
+    if exp_name != config.exp_name:
+        config = dataclasses.replace(config, exp_name=exp_name)
 
     if config.batch_size % jax.device_count() != 0:
         raise ValueError(
