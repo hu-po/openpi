@@ -127,7 +127,7 @@ git push -u origin HEAD
 wandb artifact put checkpoints/pi05_tatbot/exp --name tatbot-pi05-checkpoints
 ```
 
-## 7) Remote Inference on LAN
+## 7) Remote Inference on LAN (No ROS)
 - Policy server on AGX Orin:
 ```bash
 uv run scripts/serve_policy.py policy:checkpoint \
@@ -136,16 +136,25 @@ uv run scripts/serve_policy.py policy:checkpoint \
   --port=8000
 ```
 
-- Robot client on Intel NUC (ROS + RealSense + WXAI arms):
-  - Follow `examples/aloha_real/README.md` (update RealSense serials, bring up ROS nodes).
-  - Install client and run:
+- Robot client on Intel NUC (Tatbot + LeRobot):
+  - Install the client: `pip install -e packages/openpi-client`
+  - Run the Tatbot inference loop (maps your cameras to ALOHA keys and executes action chunks open‑loop):
 
 ```bash
-uv venv --python 3.10 examples/aloha_real/.venv && source examples/aloha_real/.venv/bin/activate
-uv pip sync examples/aloha_real/requirements.txt
-uv pip install -e packages/openpi-client
-python -m examples.aloha_real.main --host <AGX_ORIN_IP> --port 8000
+uv run python examples/tatbot/infer.py \
+  --host <AGX_ORIN_IP> --port 8000 \
+  --ip_address_l <LEFT_ARM_IP> --ip_address_r <RIGHT_ARM_IP> \
+  --arm_l_config ~/tatbot/configs/left.yaml \
+  --arm_r_config ~/tatbot/configs/right.yaml \
+  --home_pos_l 0 -1.5 1.5 0 0 0 0.5 \
+  --home_pos_r 0 -1.5 1.5 0 0 0 0.5 \
+  --left_cam realsense1 --right_cam realsense2 --high_cam overhead
 ```
+
+Notes
+- Expected inputs for Tatbot pi‑0.5: `cam_high` (required), `cam_left_wrist`, `cam_right_wrist`, 14‑D state, `prompt` string.
+- If no overhead camera, the script duplicates the left wrist image as `cam_high`.
+- Images are pre‑resized to 224 on the client to reduce bandwidth; server handles normalization.
 
 Tips
 - Ensure both machines can ping each other; open port 8000.
