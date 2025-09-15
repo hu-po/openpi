@@ -611,7 +611,7 @@ _CONFIGS = [
     #
     TrainConfig(
         name="pi0_mycobot",
-        model=pi0.Pi0Config(),
+        model=pi0_config.Pi0Config(),
         data=LeRobotMyCobotDataConfig(
             assets=AssetsConfig(asset_id="mycobot"),
             default_prompt="move the robot to the left",
@@ -808,6 +808,8 @@ _CONFIGS = [
                             },
                             "state": "observation.state",
                             "actions": "action",
+                            # Preserve prompt injected by PromptFromLeRobotTask
+                            "prompt": "prompt",
                         }
                     )
                 ]
@@ -857,7 +859,7 @@ _CONFIGS = [
             action_horizon=16,
         ),
         data=LeRobotAlohaDataConfig(
-            repo_id="<your-hf-username>/tatbot_wow_pi05_aloha",
+            repo_id="tatbot/wow_pi05_aloha",
             assets=AssetsConfig(
                 assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
                 asset_id="trossen",
@@ -875,6 +877,7 @@ _CONFIGS = [
                             },
                             "state": "observation.state",
                             "actions": "action",
+                            "prompt": "prompt",
                         }
                     )
                 ]
@@ -888,6 +891,60 @@ _CONFIGS = [
         log_interval=100,
         save_interval=2000,
         ema_decay=0.999,
+    ),
+    # Low-memory LoRA finetuning variant for local smoke tests (single GPU)
+    # uv run python scripts/compute_norm_stats.py --config-name pi05_tatbot --max-frames 2048
+    # XLA_PYTHON_CLIENT_PREALLOCATE=false XLA_PYTHON_CLIENT_ALLOCATOR=platform uv run python scripts/train.py pi05_tatbot_low_mem --exp_name=tatbot_smoke_lora --num_workers=0 --no-wandb-enabled --overwrite
+    TrainConfig(
+        name="pi05_tatbot_low_mem",
+        model=pi0_config.Pi0Config(
+            pi05=True,
+            action_dim=32,
+            action_horizon=8,
+            # Reduce token budget to lower memory
+            max_token_len=120,
+            # Enable LoRA on both components
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ),
+        data=LeRobotAlohaDataConfig(
+            repo_id="tatbot/wow_pi05_aloha",
+            assets=AssetsConfig(
+                # Use local stats by default for dev; override on cloud as needed
+                assets_dir="./assets/pi05_tatbot",
+                asset_id="tatbot/wow_pi05_aloha",
+            ),
+            base_config=DataConfig(prompt_from_task=True),
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.cam_high",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                            "prompt": "prompt",
+                        }
+                    )
+                ]
+            ),
+        ),
+        # Load pi05 base weights
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        # Freeze all but LoRA parameters
+        freeze_filter=pi0_config.Pi0Config(
+            pi05=True,
+            paligemma_variant="gemma_2b_lora",
+            action_expert_variant="gemma_300m_lora",
+        ).get_freeze_filter(),
+        ema_decay=None,
+        num_train_steps=200,
+        batch_size=1,
+        log_interval=10,
+        save_interval=1000,
     ),
     #
     # Fine-tuning DROID configs.
