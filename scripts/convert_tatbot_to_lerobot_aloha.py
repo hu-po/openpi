@@ -28,7 +28,7 @@ import numpy as np
 import tyro
 
 # LeRobot imports
-from lerobot.common.datasets.lerobot_dataset import LEROBOT_HOME
+from lerobot.common.datasets.lerobot_dataset import HF_LEROBOT_HOME
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.common.datasets.lerobot_dataset import LeRobotDatasetMetadata
 
@@ -38,7 +38,7 @@ class Args:
     # Source HF dataset (LeRobot v2.x format)
     src_repo_id: str = "tatbot/wow-2025y-09m-10d-15h-34m-08s"
     # Destination HF model repo to create/push (e.g., your-username/name)
-    dst_repo_id: str = "<hf_username>/tatbot_wow_pi05_aloha"
+    dst_repo_id: str = "tatbot/wow_pi05_aloha"
 
     # Camera remapping: source keys -> ALOHA keys subset
     # Realsense1 -> cam_high, Realsense2 -> cam_low by default
@@ -89,7 +89,8 @@ def _create_empty_dst_dataset(
         "observation.images.cam_low": {"dtype": "image", "shape": (3, 480, 640)},
     }
     # Create fresh dataset home (overwrites existing local copy if any)
-    dst_root = Path(LEROBOT_HOME) / dst_repo_id
+    safe_repo_id = dst_repo_id.lstrip("/")
+    dst_root = Path(HF_LEROBOT_HOME) / safe_repo_id
     if dst_root.exists():
         # Avoid accidental merge; callers control destination name
         import shutil
@@ -110,13 +111,13 @@ def _create_empty_dst_dataset(
 
 
 def convert(args: Args) -> None:
-    # Download src dataset metadata; loads or fetches into LEROBOT_HOME
+    # Download src dataset metadata; loads or fetches into HF_LEROBOT_HOME
     src_meta = LeRobotDatasetMetadata(args.src_repo_id)
     total_eps = src_meta.total_episodes
     fps = src_meta.fps
 
     # Read per-episode tasks to preserve prompts
-    src_root = Path(LEROBOT_HOME) / args.src_repo_id
+    src_root = Path(HF_LEROBOT_HOME) / args.src_repo_id
     episodes_meta = _load_episode_meta(src_root)
     assert len(episodes_meta) == total_eps, "episodes.jsonl length mismatch"
 
@@ -161,19 +162,23 @@ def convert(args: Args) -> None:
             frame = {
                 "observation.state": sample["observation.state"],
                 "action": sample["action"],
+                "task": ep_task,
                 **images_in,
             }
             dst_ds.add_frame(frame)
 
-        # Close out episode and store task string
-        dst_ds.save_episode(task=ep_task)
+        # Close out episode (per-frame 'task' is already stored in frames)
+        dst_ds.save_episode()
 
-    # Finalize and optionally push
-    dst_ds.consolidate()
+    # Finalize image writes before optional push
+    try:
+        dst_ds._wait_image_writer()
+    except Exception:
+        pass
     if args.push_to_hub:
         dst_ds.push_to_hub()
 
 
 if __name__ == "__main__":
-    tyro.cli(convert)
-
+    # Expose top-level flags (e.g., --src-repo-id) and pass dataclass to converter.
+    convert(tyro.cli(Args))
