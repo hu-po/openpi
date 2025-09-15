@@ -26,6 +26,7 @@ from typing import Mapping
 
 import numpy as np
 import tyro
+from PIL import Image
 
 # LeRobot imports
 from lerobot.common.datasets.lerobot_dataset import HF_LEROBOT_HOME
@@ -41,9 +42,9 @@ class Args:
     dst_repo_id: str = "tatbot/wow_pi05_aloha"
 
     # Camera remapping: source keys -> ALOHA keys subset
-    # Realsense1 -> cam_high, Realsense2 -> cam_low by default
+    # Tatbot mapping: realsense1 -> cam_left_wrist, realsense2 -> cam_right_wrist
     cam_map: Mapping[str, str] = dataclasses.field(
-        default_factory=lambda: {"realsense1": "cam_high", "realsense2": "cam_low"}
+        default_factory=lambda: {"realsense1": "cam_left_wrist", "realsense2": "cam_right_wrist"}
     )
 
     # Force robot_type string in destination (purely informational)
@@ -85,8 +86,10 @@ def _create_empty_dst_dataset(
     features = {
         "observation.state": {"dtype": "float32", "shape": (14,)},
         "action": {"dtype": "float32", "shape": (14,)},
+        # Base and wrist cameras expected by ALOHA transforms
         "observation.images.cam_high": {"dtype": "image", "shape": (3, 480, 640)},
-        "observation.images.cam_low": {"dtype": "image", "shape": (3, 480, 640)},
+        "observation.images.cam_left_wrist": {"dtype": "image", "shape": (3, 480, 640)},
+        "observation.images.cam_right_wrist": {"dtype": "image", "shape": (3, 480, 640)},
     }
     # Create fresh dataset home (overwrites existing local copy if any)
     safe_repo_id = dst_repo_id.lstrip("/")
@@ -127,6 +130,46 @@ def convert(args: Args) -> None:
     # Choose which episodes to convert
     ep_indices = _parse_episodes_arg(args.episodes, total_eps)
 
+    # Helper to load episode-level stroke image for cam_high
+    def crop_to_aspect_pil(img: Image.Image, target_w: int, target_h: int) -> Image.Image:
+        """Center-crop to match target aspect ratio, then return cropped image (no resize)."""
+        tw, th = target_w, target_h
+        src_w, src_h = img.size
+        target_ratio = tw / th
+        src_ratio = src_w / src_h
+
+        if abs(src_ratio - target_ratio) < 1e-6:
+            return img
+        if src_ratio > target_ratio:
+            # Too wide: crop equally on left/right
+            new_w = int(round(src_h * target_ratio))
+            left = max((src_w - new_w) // 2, 0)
+            right = left + new_w
+            return img.crop((left, 0, right, src_h))
+        else:
+            # Too tall: crop equally top/bottom
+            new_h = int(round(src_w / target_ratio))
+            top = max((src_h - new_h) // 2, 0)
+            bottom = top + new_h
+            return img.crop((0, top, src_w, bottom))
+
+    def load_cam_high(ep_idx: int) -> np.ndarray | None:
+        # Prefer episode-local stroke_l.png else stroke_r.png; path resolved relative to source root
+        ep_dir = src_root / f"episode_{ep_idx:06d}"
+        for name in ("stroke_l.png", "stroke_r.png"):
+            f = ep_dir / name
+            if f.exists():
+                try:
+                    img = Image.open(f).convert("RGB")
+                    target_w, target_h = 640, 480
+                    img_cropped = crop_to_aspect_pil(img, target_w, target_h)
+                    img_resized = img_cropped.resize((target_w, target_h), Image.BILINEAR)
+                    arr = np.asarray(img_resized, dtype=np.uint8)  # HWC
+                    return arr
+                except Exception:
+                    return None
+        return None
+
     # Iterate per-episode to preserve episode boundaries and tasks
     for ep_idx in ep_indices:
         # Load a single-episode view to get frames in order
@@ -141,6 +184,8 @@ def convert(args: Args) -> None:
         if ep_task is None:
             ep_task = "tatbot"
 
+        # Preload cam_high once per episode
+        cam_high_img = load_cam_high(ep_idx)
         for i in range(n):
             sample = src_ds[i]
             # Map cameras
@@ -157,7 +202,29 @@ def convert(args: Args) -> None:
                     if arr.dtype != np.uint8:
                         # assume [0,1] floats or 0..255 ints
                         arr = (np.clip(arr, 0.0, 1.0) * 255).astype(np.uint8) if np.issubdtype(arr.dtype, np.floating) else arr.astype(np.uint8)
+                    # Center-crop to 4:3 then resize to 640x480
+                    h, w = arr.shape[:2]
+                    if (w, h) != (640, 480):
+                        img_pil = Image.fromarray(arr)
+                        img_cropped = crop_to_aspect_pil(img_pil, 640, 480)
+                        img_resized = img_cropped.resize((640, 480), Image.BILINEAR)
+                        arr = np.asarray(img_resized, dtype=np.uint8)
                     images_in[f"observation.images.{dst_key}"] = arr
+
+            # Inject cam_high from stroke image, duplicate across frames
+            target_key_high = "observation.images.cam_high"
+            if cam_high_img is not None:
+                images_in[target_key_high] = cam_high_img
+            # Ensure mandatory keys exist (cam_high, both wrists)
+            target_w, target_h = 640, 480
+            black = np.zeros((target_h, target_w, 3), dtype=np.uint8)
+            for required in (
+                target_key_high,
+                "observation.images.cam_left_wrist",
+                "observation.images.cam_right_wrist",
+            ):
+                if required not in images_in:
+                    images_in[required] = black
 
             frame = {
                 "observation.state": sample["observation.state"],

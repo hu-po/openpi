@@ -870,7 +870,8 @@ _CONFIGS = [
                         {
                             "images": {
                                 "cam_high": "observation.images.cam_high",
-                                "cam_low": "observation.images.cam_low",
+                                "cam_left_wrist": "observation.images.cam_left_wrist",
+                                "cam_right_wrist": "observation.images.cam_right_wrist",
                             },
                             "state": "observation.state",
                             "actions": "action",

@@ -9,9 +9,11 @@ This guide shows how to finetune pi‑0.5 on the HF dataset `tatbot/wow-2025y-09
 - Dataset: dataset should be in LeRobot format. If your keys differ from ALOHA naming (`cam_high`, `cam_left_wrist`, `cam_right_wrist`, `observation.state`, `action`), adapt the repack mapping accordingly.
 
 ## 2) Convert Dataset to ALOHA Format
-Run the converter to map `realsense{1,2}` to `cam_{high,low}` and preserve tasks:
+Run the converter with Tatbot-specific camera mapping and episode stroke images:
 
 ```bash
+# realsense1 -> cam_left_wrist, realsense2 -> cam_right_wrist
+# cam_high is derived per-episode from episode_{idx}/stroke_{l|r}.png and duplicated across frames.
 uv run python scripts/convert_tatbot_to_lerobot_aloha.py \
   --src-repo-id tatbot/wow-2025y-09m-10d-15h-34m-08s \
   --dst-repo-id <your-hf-username>/tatbot_wow_pi05_aloha \
@@ -37,7 +39,7 @@ TrainConfig(
             assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
             asset_id="trossen",
         ),
-        # If your dataset key names differ, update repack_transforms mapping here.
+        # Mapping aligns to ALOHA: cam_high + wrist cameras; prompt from task_index
     ),
     weight_loader=weight_loaders.CheckpointWeightLoader(
         "gs://openpi-assets/checkpoints/pi05_base/params"
