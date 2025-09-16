@@ -47,6 +47,7 @@ source $HOME/.local/bin/env
 uv python install
 uv sync --all-extras --dev
 source .venv/bin/activate
+uv pip install "lerobot @ git+https://github.com/hu-po/lerobot.git@main"
 
 # install wandb
 export WANDB_PROJECT="openpi-full-H100"
@@ -61,14 +62,12 @@ wandb sweep sweeps/tatbot_pi05_full.yaml
 wandb agent $WANDB_ENTITY/$WANDB_PROJECT/SWEEP_ID
 ```
 
-## 6) Upload Checkpoints
-
-- To Hugging Face Hub (recommended for sharing):
+Upload trained checkpoints to Hugging Face Hub (recommended for sharing):
 
 ```bash
 pip install huggingface_hub git-lfs
 huggingface-cli login
-huggingface-cli repo create tatbot/pi05_tatbot --type=model
+huggingface-cli repo create tatbot/pi05_full_tatbot_finetune --type=model
 cd checkpoints/pi05_tatbot/exp
 git init && git lfs install
 git remote add origin https://huggingface.co/tatbot/pi05_tatbot
@@ -76,12 +75,10 @@ git add . && git commit -m "Add pi05 tatbot checkpoints"
 git push -u origin HEAD
 ```
 
-## 7) Remote Inference on LAN (No ROS)
+## Remote Inference on Tatbot (No ROS)
 
-- Policy server on 3090:
-- Robot client on Intel NUC (Tatbot + LeRobot):
-  - Install the client: `pip install -e packages/openpi-client`
-  - Run the Tatbot inference loop (maps your cameras to ALOHA keys and executes action chunks open‑loop). If using RealSense, pass serial numbers to enable camera streams directly without ROS:
+- Policy server on oop (3090):
+- Robot client on hog (Intel NUC)
 
 Notes
 - Inputs for Tatbot pi‑0.5: `cam_high` (required), `cam_left_wrist`, `cam_right_wrist`, 14‑D state, `prompt`.
