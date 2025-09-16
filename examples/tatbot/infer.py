@@ -15,7 +15,7 @@ from openpi_client import image_tools
 from openpi_client import websocket_client_policy
 
 # Tatbot + LeRobot
-from lerobot.robots import make_robot_from_config
+from lerobot.robots.utils import make_robot_from_config
 from lerobot.robots.tatbot.config_tatbot import TatbotConfig
 from lerobot.cameras.realsense import RealSenseCameraConfig
 
