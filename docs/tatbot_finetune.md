@@ -128,36 +128,14 @@ wandb artifact put checkpoints/pi05_tatbot/exp --name tatbot-pi05-checkpoints
 ```
 
 ## 7) Remote Inference on LAN (No ROS)
-- Policy server on AGX Orin:
-```bash
-uv run scripts/serve_policy.py policy:checkpoint \
-  --policy.config=pi05_tatbot \
-  --policy.dir=/workspace/checkpoints/pi05_tatbot/exp/50000 \
-  --port=8000
-```
 
+- Policy server on 3090:
 - Robot client on Intel NUC (Tatbot + LeRobot):
   - Install the client: `pip install -e packages/openpi-client`
   - Run the Tatbot inference loop (maps your cameras to ALOHA keys and executes action chunks open‑loop). If using RealSense, pass serial numbers to enable camera streams directly without ROS:
 
-```bash
-uv run python examples/tatbot/infer.py \
-  --host <AGX_ORIN_IP> --port 8000 \
-  --ip_address_l <LEFT_ARM_IP> --ip_address_r <RIGHT_ARM_IP> \
-  --arm_l_config ~/tatbot/configs/left.yaml \
-  --arm_r_config ~/tatbot/configs/right.yaml \
-  --home_pos_l 0 -1.5 1.5 0 0 0 0.5 \
-  --home_pos_r 0 -1.5 1.5 0 0 0 0.5 \
-  --left_cam realsense1 --right_cam realsense2 --high_cam overhead \
-  --enable_realsense \
-  --rs_left_serial <LEFT_RS_SERIAL> \
-  --rs_right_serial <RIGHT_RS_SERIAL> \
-  --rs_high_serial <OVERHEAD_RS_SERIAL>
-```
-
 Notes
 - Inputs for Tatbot pi‑0.5: `cam_high` (required), `cam_left_wrist`, `cam_right_wrist`, 14‑D state, `prompt`.
-- If no overhead camera, `--high_cam` can be omitted and the script duplicates the left wrist image as `cam_high`.
 - Client pre‑resizes images to 224; server performs the final normalization and any additional resizing.
 
 Tips
@@ -187,3 +165,37 @@ This sweep varies LR, warmup, clip norm, and small sequence sizes for memory saf
 Notes on sweep checkpoints
 - The sweep command uses `--exp_name=sweep-${wandb.run.id}`.
 - Train script expands that placeholder (or appends a short random suffix when needed) so each run writes to a unique checkpoint directory, avoiding collisions without deleting prior runs.
+
+# Experiment Logs
+
+## LoRA finetune on local 3090
+
+experiment logging
+- https://wandb.ai/hug/openpi-lora-3090
+
+analysis
+- https://grok.com/share/bGVnYWN5LWNvcHk%3D_42092685-77f0-4153-a4ea-01e02687741f
+- https://chatgpt.com/share/68c97743-87c0-8009-a768-f6eed62150f2
+- https://g.co/gemini/share/8b739714e005
+
+models agree that best run to test is `sweep-kc83rnit`
+
+run inference server on oop (3090)
+
+```bash
+cd ~/openpi
+source .venv/bin/activate
+uv run scripts/serve_policy.py policy:checkpoint \
+--policy.config=pi05_tatbot_low_mem \
+--policy.dir="$(pwd)/checkpoints/pi05_tatbot_low_mem/sweep-kc83rnit/199"
+```
+
+run robot client on hog (intel nuc)
+
+```bash
+cd ~/openpi
+source .venv/bin/activate
+uv pip install -e packages/openpi-client
+uv pip install "lerobot[tatbot,intelrealsense] @ git+https://github.com/hu-po/lerobot.git@main"
+uv run python examples/tatbot/infer.py
+```

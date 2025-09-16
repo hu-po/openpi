@@ -46,30 +46,26 @@ def prep_image(img: np.ndarray, size: int = 224) -> np.ndarray:
 @dataclasses.dataclass
 class Args:
     # Policy server
-    host: str
+    host: str = "192.168.1.51" # oop policy server
     port: int = 8000
     default_prompt: Optional[str] = None
+    stroke_image: Path = Path("~/tatbot/designs/wow/stroke_bright_red_right_0000.png")
 
     # Tatbot connection
-    ip_address_l: str
-    ip_address_r: str
-    arm_l_config: Path
-    arm_r_config: Path
+    ip_address_l: str = "92.168.1.3"
+    ip_address_r: str = "92.168.1.2"
+    arm_l_config: Path = Path("~/tatbot/configs/left.yaml")
+    arm_r_config: Path = Path("~/tatbot/configs/right.yaml")
     goal_time: float = 0.06
     connection_timeout: float = 3.0
-    home_pos_l: list[float] = dataclasses.field(default_factory=lambda: [0, -1.5, 1.5, 0, 0, 0, 0.5])
-    home_pos_r: list[float] = dataclasses.field(default_factory=lambda: [0, -1.5, 1.5, 0, 0, 0, 0.5])
+    home_pos_l: list[float] = dataclasses.field(default_factory=lambda: [-0.333, 0.639, 0.667, -1.034, 0.541, 2.240, 0.04])
+    home_pos_r: list[float] = dataclasses.field(default_factory=lambda: [0.333, 0.639, 0.667, -1.034, -0.541, -2.240, 0.04])
 
     # Camera mapping to ALOHA keys
     left_cam: str = "realsense1"
     right_cam: str = "realsense2"
-    high_cam: Optional[str] = None  # If None, duplicates left_cam as cam_high
-
-    # Optional RealSense setup (no ROS): provide serials to enable camera streams
-    enable_realsense: bool = False
-    rs_left_serial: Optional[str] = None
-    rs_right_serial: Optional[str] = None
-    rs_high_serial: Optional[str] = None
+    rs_left_serial: str = "230422273017"
+    rs_right_serial: str = "218622278376"
     rs_fps: int = 10
     rs_width: int = 640
     rs_height: int = 480
@@ -88,25 +84,20 @@ def main(args: Args) -> None:
     logging.info(f"Connected to policy server. Metadata: {meta}")
 
     # Configure Tatbot
-    # Build optional RealSense camera config map
     rs_cams = {}
-    if args.enable_realsense:
-        def cfg_rs(name: str, serial: Optional[str]) -> Optional[RealSenseCameraConfig]:
-            if serial is None:
-                return None
-            return RealSenseCameraConfig(
-                fps=args.rs_fps,
-                width=args.rs_width,
-                height=args.rs_height,
-                serial_number_or_name=serial,
-            )
-        if (c := cfg_rs(args.left_cam, args.rs_left_serial)) is not None:
-            rs_cams[args.left_cam] = c
-        if (c := cfg_rs(args.right_cam, args.rs_right_serial)) is not None:
-            rs_cams[args.right_cam] = c
-        if args.high_cam is not None and (c := cfg_rs(args.high_cam, args.rs_high_serial)) is not None:
-            rs_cams[args.high_cam] = c
-
+    def cfg_rs(serial: Optional[str]) -> Optional[RealSenseCameraConfig]:
+        if serial is None:
+            return None
+        return RealSenseCameraConfig(
+            fps=args.rs_fps,
+            width=args.rs_width,
+            height=args.rs_height,
+            serial_number_or_name=serial,
+        )
+    if (c := cfg_rs(args.rs_left_serial)) is not None:
+        rs_cams[args.left_cam] = c
+    if (c := cfg_rs(args.rs_right_serial)) is not None:
+        rs_cams[args.right_cam] = c
     cfg = TatbotConfig(
         ip_address_l=args.ip_address_l,
         ip_address_r=args.ip_address_r,
@@ -122,6 +113,9 @@ def main(args: Args) -> None:
     robot = make_robot_from_config(cfg)
     robot.connect()
     logging.info("Tatbot connected")
+
+    # TODO: load stroke image from design dir
+    stroke_image = 
 
     dt = 1.0 / max(1e-6, args.max_hz)
     step = 0
@@ -143,7 +137,7 @@ def main(args: Args) -> None:
 
             img_left = get_cam(args.left_cam)
             img_right = get_cam(args.right_cam)
-            img_high = get_cam(args.high_cam) or img_left
+            img_high = prep_image(stroke_image)
 
             # Extract 14‑D state (left 7 + right 7)
             joints = []
