@@ -852,7 +852,7 @@ _CONFIGS = [
     # Tatbot finetuning config (LeRobot dataset on Trossen/WXAI arms).
     #
     TrainConfig(
-        name="pi05_tatbot",
+        name="pi05_full_tatbot_finetune",
         model=pi0_config.Pi0Config(
             pi05=True,
             action_dim=32,

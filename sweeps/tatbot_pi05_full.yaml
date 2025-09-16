@@ -1,0 +1,19 @@
+method: bayes
+metric: { name: loss, goal: minimize }
+parameters:
+  optimizer.clip_gradient_norm: { values: [1.0, 2.0] }
+  batch_size: { values: [64, 128, 256] }
+  model.action_horizon: { values: [8, 16] }
+  model.max_token_len: { values: [180, 220] }
+command:
+  - uv
+  - run
+  - python
+  - ${program}
+  - pi05_full_tatbot_finetune
+  - --exp_name
+  - sweep-${wandb.run.id}
+  - --num_workers
+  - "4"
+  - ${args}
+program: scripts/train.py

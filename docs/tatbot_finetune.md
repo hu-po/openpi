@@ -23,92 +23,46 @@ uv run python scripts/convert_tatbot_to_lerobot_aloha.py \
 Then use the new repo id in training below.
 
 ## 3) Create a TrainConfig for Tatbot
-Add a new entry to `src/openpi/training/config.py` near other fine‑tuning configs:
 
-```python
-TrainConfig(
-    name="pi05_tatbot",
-    model=pi0_config.Pi0Config(
-        pi05=True,
-        action_dim=32,          # set to your action dimension
-        action_horizon=16,      # chunk length used during inference
-    ),
-    data=LeRobotAlohaDataConfig(
-        repo_id="<your-hf-username>/tatbot_wow_pi05_aloha",
-        assets=AssetsConfig(
-            assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
-            asset_id="trossen",
-        ),
-        # Mapping aligns to ALOHA: cam_high + wrist cameras; prompt from task_index
-    ),
-    weight_loader=weight_loaders.CheckpointWeightLoader(
-        "gs://openpi-assets/checkpoints/pi05_base/params"
-    ),
-    num_train_steps=50_000,
-    batch_size=256,            # fits H100‑80GB; adjust if OOM
-    log_interval=100,
-    save_interval=2000,
-)
-```
+Add a new entry to `src/openpi/training/config.py` near other fine‑tuning configs
 
 Notes
 - Adjust `action_dim`/`action_horizon` to your robot (e.g., joint dims + grippers).
 - Keep `asset_id="trossen"` for WXAI arms to reuse normalization stats.
 
 ## 4) Train on Datacrunch H100 SXM5 80GB
+
 On the cloud VM:
 
 ```bash
-# System deps
-sudo apt-get update && sudo apt-get install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev
+# ssh into node
+ssh root@31.22.104.62
 
-# Env + deps
+# clone openpi
+git clone https://github.com/hu-po/openpi.git && cd openpi
+
+# install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.local/bin/env
 uv python install
 uv sync --all-extras --dev
-wandb login  # ensure WANDB_PROJECT is set
+source .venv/bin/activate
 
-# Single run (override basics via Tyro CLI)
-uv run python scripts/train.py pi05_tatbot \
-  --exp_name=tatbot_pi05_h100 \
-  --checkpoint_base_dir=/workspace/checkpoints \
-  --assets_base_dir=/workspace/assets \
-  --batch_size=256 \
-  --lr_schedule.peak_lr=5e-5 \
-  --lr_schedule.warmup_steps=2000 \
-  --ema_decay=0.999
-```
+# install wandb
+export WANDB_PROJECT="openpi-full-H100"
+export WANDB_ENTITY="hug"
+wandb login
 
-## 5) WANDB Hyperparameter Sweep
-Create `sweeps/tatbot_pi05.yaml`:
+# setup huggingface
+huggingface-cli login
 
-```yaml
-method: bayes
-metric: { name: loss, goal: minimize }
-parameters:
-  batch_size: { values: [128, 192, 256] }
-  lr_schedule.peak_lr: { values: [2.5e-5, 5e-5, 7.5e-5] }
-  lr_schedule.warmup_steps: { values: [1000, 2000, 4000] }
-  ema_decay: { values: [0.99, 0.995, 0.999] }
-command:
-  - uv
-  - run
-  - python
-  - ${program}
-  - pi05_tatbot
-  - --exp_name
-  - sweep-${wandb.run.id}
-  - ${args}
-program: scripts/train.py
-```
-
-Run the sweep:
-
-```bash
-wandb sweep sweeps/tatbot_pi05.yaml   # returns a SWEEP_ID
+# create the sweep and start the agent
+wandb sweep sweeps/tatbot_pi05_full.yaml
 wandb agent $WANDB_ENTITY/$WANDB_PROJECT/SWEEP_ID
 ```
 
 ## 6) Upload Checkpoints
+
 - To Hugging Face Hub (recommended for sharing):
 
 ```bash
@@ -120,11 +74,6 @@ git init && git lfs install
 git remote add origin https://huggingface.co/tatbot/pi05_tatbot
 git add . && git commit -m "Add pi05 tatbot checkpoints"
 git push -u origin HEAD
-```
-
-- Or as WANDB Artifacts:
-```bash
-wandb artifact put checkpoints/pi05_tatbot/exp --name tatbot-pi05-checkpoints
 ```
 
 ## 7) Remote Inference on LAN (No ROS)
