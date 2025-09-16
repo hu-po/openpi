@@ -32,8 +32,8 @@ class Args:
     # Policy server
     host: str = "192.168.1.51"  # policy server
     port: int = 8000
-    default_prompt: Optional[str] = None
-    stroke_image: Path = Path("~/tatbot/designs/wow/stroke_bright_red_right_0000.png")
+    default_prompt: Optional[str] = "left: left arm inkdip into inkcap_left_large to fill with true_blue ink, right: right arm stroke after inkdip in inkcap_right_large"
+    stroke_image: Path = Path("/nfs/tatbot/designs/wow/stroke_bright_red_right_0000.png")
 
     # Tatbot connection
     ip_address_l: str = "192.168.1.3"
@@ -97,6 +97,13 @@ def main(args: Args) -> None:
     robot = make_robot_from_config(cfg)
     robot.connect()
     logging.info("Tatbot connected")
+    # Warm up camera streams to reduce initial timeouts
+    try:
+        for _ in range(3):
+            _ = robot.get_observation()
+            time.sleep(0.2)
+    except Exception as e:
+        logging.warning(f"Camera warmup warning: {e}")
 
     # Load optional stroke (overhead) image once and reuse per-step for cam_high
     stroke_img_arr: Optional[np.ndarray] = None
@@ -132,7 +139,21 @@ def main(args: Args) -> None:
 
             img_left = get_cam(args.left_cam)
             img_right = get_cam(args.right_cam)
-            img_high = prep_image(stroke_img_arr)
+            # Build cam_high from stroke image if provided; else fallback to cameras
+            img_high = None
+            if stroke_img_arr is not None:
+                try:
+                    img_high = prep_image(stroke_img_arr)
+                except Exception as e:
+                    logging.warning(f"Stroke image preprocess failed; falling back to cameras: {e}")
+                    img_high = None
+            if img_high is None:
+                if img_left is not None:
+                    img_high = img_left
+                elif img_right is not None:
+                    img_high = img_right
+                else:
+                    img_high = np.zeros((224, 224, 3), dtype=np.uint8)
             
             # Extract 14‑D state (left 7 + right 7)
             joints = []
