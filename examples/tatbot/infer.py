@@ -139,21 +139,7 @@ def main(args: Args) -> None:
 
             img_left = get_cam(args.left_cam)
             img_right = get_cam(args.right_cam)
-            # Build cam_high from stroke image if provided; else fallback to cameras
-            img_high = None
-            if stroke_img_arr is not None:
-                try:
-                    img_high = prep_image(stroke_img_arr)
-                except Exception as e:
-                    logging.warning(f"Stroke image preprocess failed; falling back to cameras: {e}")
-                    img_high = None
-            if img_high is None:
-                if img_left is not None:
-                    img_high = img_left
-                elif img_right is not None:
-                    img_high = img_right
-                else:
-                    img_high = np.zeros((224, 224, 3), dtype=np.uint8)
+            img_high = prep_image(stroke_img_arr)
             
             # Extract 14‑D state (left 7 + right 7)
             joints = []
@@ -166,11 +152,20 @@ def main(args: Args) -> None:
 
             prompt = args.default_prompt or "perform the current task"
 
+            # Build payload for server ALOHAInputs: images (CHW), state, prompt
+            def to_chw(x: np.ndarray) -> np.ndarray:
+                # input is HWC uint8; convert to CHW
+                return np.transpose(x, (2, 0, 1))
+
+            images = {
+                "cam_high": to_chw(img_high),
+                "cam_left_wrist": to_chw(img_left) if img_left is not None else to_chw(img_high),
+                "cam_right_wrist": to_chw(img_right) if img_right is not None else to_chw(img_high),
+            }
+
             payload = {
-                "observation.images.cam_high": img_high,
-                "observation.images.cam_left_wrist": img_left if img_left is not None else img_high,
-                "observation.images.cam_right_wrist": img_right if img_right is not None else img_high,
-                "observation.state": state,
+                "images": images,
+                "state": state,
                 "prompt": prompt,
             }
 
