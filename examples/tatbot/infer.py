@@ -38,8 +38,8 @@ class Args:
     # Tatbot connection
     ip_address_l: str = "192.168.1.3"
     ip_address_r: str = "192.168.1.2"
-    arm_l_config: Path = Path("~/tatbot/configs/left.yaml")
-    arm_r_config: Path = Path("~/tatbot/configs/right.yaml")
+    arm_l_config: Path = Path("/home/hog/tatbot/config/trossen/arm_l.yaml")
+    arm_r_config: Path = Path("/home/hog/tatbot/config/trossen/arm_r.yaml")
     goal_time: float = 0.06
     connection_timeout: float = 3.0
     home_pos_l: list[float] = dataclasses.field(default_factory=lambda: [-0.333, 0.639, 0.667, -1.034, 0.541, 2.240, 0.04])
