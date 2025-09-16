@@ -15,9 +15,9 @@ from openpi_client import image_tools
 from openpi_client import websocket_client_policy
 
 # Tatbot + LeRobot
+from lerobot.robots import make_robot_from_config
 from lerobot.robots.tatbot.config_tatbot import TatbotConfig
 from lerobot.cameras.realsense import RealSenseCameraConfig
-from lerobot.robots import make_robot_from_config
 
 
 def prep_image(img: np.ndarray, size: int = 224) -> np.ndarray:
