@@ -1,23 +1,6 @@
 """
 Tatbot remote inference (no ROS) using openpi-client over WebSocket.
-
-Requirements (NUC client):
-- `pip install -e packages/openpi-client`
-- Tatbot + LeRobot runtime available (tatbot arms + cameras)
-
-Usage (example):
-  uv run python examples/tatbot/infer.py \
-    --host 192.168.1.50 --port 8000 \
-    --ip_address_l 192.168.1.71 --ip_address_r 192.168.1.72 \
-    --arm_l_config ~/tatbot/configs/left.yaml \
-    --arm_r_config ~/tatbot/configs/right.yaml \
-    --home_pos_l 0 -1.5 1.5 0 0 0 0.5 \
-    --home_pos_r 0 -1.5 1.5 0 0 0 0.5 \
-    --left_cam realsense1 --right_cam realsense2 --high_cam overhead
 """
-
-from __future__ import annotations
-
 import dataclasses
 import logging
 import time
