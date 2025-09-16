@@ -30,14 +30,14 @@ def prep_image(img: np.ndarray, size: int = 224) -> np.ndarray:
 @dataclasses.dataclass
 class Args:
     # Policy server
-    host: str = "192.168.1.51" # oop policy server
+    host: str = "192.168.1.51"  # policy server
     port: int = 8000
     default_prompt: Optional[str] = None
     stroke_image: Path = Path("~/tatbot/designs/wow/stroke_bright_red_right_0000.png")
 
     # Tatbot connection
-    ip_address_l: str = "92.168.1.3"
-    ip_address_r: str = "92.168.1.2"
+    ip_address_l: str = "192.168.1.3"
+    ip_address_r: str = "192.168.1.2"
     arm_l_config: Path = Path("~/tatbot/configs/left.yaml")
     arm_r_config: Path = Path("~/tatbot/configs/right.yaml")
     goal_time: float = 0.06
@@ -50,7 +50,7 @@ class Args:
     right_cam: str = "realsense2"
     rs_left_serial: str = "230422273017"
     rs_right_serial: str = "218622278376"
-    rs_fps: int = 10
+    rs_fps: int = 30
     rs_width: int = 640
     rs_height: int = 480
 
