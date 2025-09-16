@@ -855,7 +855,7 @@ _CONFIGS = [
         name="pi05_tatbot",
         model=pi0_config.Pi0Config(
             pi05=True,
-            action_dim=32,  # adjust to your robot action dimension
+            action_dim=32,
             action_horizon=16,
         ),
         data=LeRobotAlohaDataConfig(
@@ -883,14 +883,9 @@ _CONFIGS = [
                 ]
             ),
         ),
-        weight_loader=weight_loaders.CheckpointWeightLoader(
-            "gs://openpi-assets/checkpoints/pi05_base/params"
-        ),
-        num_train_steps=50_000,
+        weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
+        num_train_steps=20_000,
         batch_size=256,
-        log_interval=100,
-        save_interval=2000,
-        ema_decay=0.999,
     ),
     # Low-memory LoRA finetuning variant for local smoke tests (single GPU)
     # uv run python scripts/compute_norm_stats.py --config-name pi05_tatbot --max-frames 2048
