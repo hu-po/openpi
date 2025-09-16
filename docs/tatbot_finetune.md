@@ -199,3 +199,5 @@ uv pip install -e packages/openpi-client
 uv pip install "lerobot[tatbot,intelrealsense] @ git+https://github.com/hu-po/lerobot.git@main"
 uv run python examples/tatbot/infer.py
 ```
+
+policy inference works, but arms mostly just kinda move slowly around and eventually collide with each other and the environment, leading to an estop.

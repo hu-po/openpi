@@ -32,7 +32,8 @@ class Args:
     # Policy server
     host: str = "192.168.1.51"  # policy server
     port: int = 8000
-    default_prompt: Optional[str] = "left: left arm inkdip into inkcap_left_large to fill with true_blue ink, right: right arm stroke after inkdip in inkcap_right_large"
+    prompt: str = "stay still while opening and closing the grippers"
+    # prompt: str = "left: left arm inkdip into inkcap_left_large to fill with true_blue ink, right: right arm stroke after inkdip in inkcap_right_large"
     stroke_image: Path = Path("/nfs/tatbot/designs/wow/stroke_bright_red_right_0000.png")
 
     # Tatbot connection
@@ -150,8 +151,6 @@ def main(args: Args) -> None:
                     joints.append(float(v))
             state = np.asarray(joints, dtype=np.float32)
 
-            prompt = args.default_prompt or "perform the current task"
-
             # Build payload for server ALOHAInputs: images (CHW), state, prompt
             def to_chw(x: np.ndarray) -> np.ndarray:
                 # input is HWC uint8; convert to CHW
@@ -166,7 +165,7 @@ def main(args: Args) -> None:
             payload = {
                 "images": images,
                 "state": state,
-                "prompt": prompt,
+                "prompt": args.prompt,
             }
 
             # Call policy
