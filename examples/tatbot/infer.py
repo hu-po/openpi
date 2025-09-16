@@ -26,6 +26,7 @@ from typing import Optional
 
 import numpy as np
 import tyro
+from PIL import Image
 
 from openpi_client import image_tools
 from openpi_client import websocket_client_policy
@@ -114,8 +115,19 @@ def main(args: Args) -> None:
     robot.connect()
     logging.info("Tatbot connected")
 
-    # TODO: load stroke image from design dir
-    stroke_image = 
+    # Load optional stroke (overhead) image once and reuse per-step for cam_high
+    stroke_img_arr: Optional[np.ndarray] = None
+    try:
+        p = args.stroke_image.expanduser()
+        if p.exists():
+            im = Image.open(p).convert("RGB")
+            stroke_img_arr = np.asarray(im, dtype=np.uint8)
+            logging.info(f"Loaded stroke image for cam_high: {p}")
+        else:
+            logging.info(f"Stroke image not found at {p}; will use left_cam for cam_high")
+    except Exception as e:
+        logging.warning(f"Failed to load stroke image: {e}")
+        stroke_img_arr = None
 
     dt = 1.0 / max(1e-6, args.max_hz)
     step = 0
@@ -137,8 +149,8 @@ def main(args: Args) -> None:
 
             img_left = get_cam(args.left_cam)
             img_right = get_cam(args.right_cam)
-            img_high = prep_image(stroke_image)
-
+            img_high = prep_image(stroke_img_arr)
+            
             # Extract 14‑D state (left 7 + right 7)
             joints = []
             for side in ("left", "right"):
