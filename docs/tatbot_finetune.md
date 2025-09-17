@@ -167,7 +167,7 @@ run inference server on oop (3090)
 
 ```bash
 # copy checkpoints from cloud to local
-scp -r root@31.22.104.105:/root/openpi/checkpoints/* /home/oop/openpi/checkpoints/
+rsync -avz --progress root@31.22.104.105:/root/openpi/checkpoints/ /home/oop/openpi/checkpoints/
 
 # make sure to replace the lerobot version in the openpi/pyproject.toml file with the latest version
 # FOR INFERENCE:
