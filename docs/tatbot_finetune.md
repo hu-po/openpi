@@ -47,7 +47,12 @@ source $HOME/.local/bin/env
 uv python install
 uv sync --all-extras --dev
 source .venv/bin/activate
-uv pip install "lerobot @ git+https://github.com/hu-po/lerobot.git@main"
+
+# make sure to replace the lerobot version in the openpi/pyproject.toml file with the latest version
+# FOR INFERENCE:
+> lerobot = { git = "https://github.com/hu-po/lerobot", rev = "main" }
+# FOR TRAINING:
+> lerobot = { git = "https://github.com/huggingface/lerobot", rev = "0cf864870cf29f4738d3ade893e6fd13fbd7cdb5" }
 
 # install wandb
 export WANDB_PROJECT="openpi-full-H100"
