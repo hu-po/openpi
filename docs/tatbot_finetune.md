@@ -62,6 +62,10 @@ wandb login
 # setup huggingface
 huggingface-cli login
 
+# memory allocation optimization
+export XLA_PYTHON_CLIENT_PREALLOCATE=false
+export XLA_PYTHON_CLIENT_ALLOCATOR=platform
+
 # create the sweep and start the agent
 wandb sweep sweeps/tatbot_pi05_full.yaml
 wandb agent $WANDB_ENTITY/$WANDB_PROJECT/SWEEP_ID
