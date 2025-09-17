@@ -69,6 +69,10 @@ export XLA_PYTHON_CLIENT_ALLOCATOR=platform
 # create the sweep and start the agent
 wandb sweep sweeps/tatbot_pi05_full.yaml
 wandb agent $WANDB_ENTITY/$WANDB_PROJECT/SWEEP_ID
+
+# to reset the cloud instance:
+git pull
+rm -rf wandb/
 ```
 
 Upload trained checkpoints to Hugging Face Hub (recommended for sharing):
