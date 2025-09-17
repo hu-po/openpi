@@ -166,8 +166,14 @@ policy inference works, but arms mostly just kinda move slowly around and eventu
 run inference server on oop (3090)
 
 ```bash
-# copy checkpoints from cloud to local
+# copy checkpoints from cloud to local (TOO SLOW)
 rsync -avz --progress root@31.22.104.105:/root/openpi/checkpoints/ /home/oop/openpi/checkpoints/
+
+# copy checkpoints by zipping then unzipping
+apt-install zip
+zip -r checkpoints.zip checkpoints/
+scp root@31.22.104.105:/root/openpi/checkpoints.zip .
+unzip checkpoints.zip /home/oop/openpi/cloud_checkpoints
 
 # make sure to replace the lerobot version in the openpi/pyproject.toml file with the latest version
 # FOR INFERENCE:
@@ -179,4 +185,13 @@ rsync -avz --progress root@31.22.104.105:/root/openpi/checkpoints/ /home/oop/ope
 uv run scripts/serve_policy.py policy:checkpoint \
 --policy.config=pi05_full_tatbot_finetune \
 --policy.dir="$(pwd)/checkpoints/pi05_full_tatbot_finetune/sweep-hotcpf41/2000"
+```
+
+run robot client on hog (intel nuc)
+
+```bash
+cd ~/openpi
+source .venv/bin/activate
+uv run python examples/tatbot/infer.py --args.prompt="inkdip left arm in inkcap_left_large to fill with true_blue ink, right arm at rest"
+uv run python examples/tatbot/infer.py --args.prompt="inkdip right arm in inkcap_right_large to fill with true_blue ink, left arm at rest"
 ```

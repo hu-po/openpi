@@ -31,7 +31,7 @@ def prep_image(img: np.ndarray, size: int = 224) -> np.ndarray:
 class Args:
     # Policy server
     host: str = "192.168.1.51"  # policy server
-    port: int = 8000
+    port: int = 8003
     prompt: str = "stay still while opening and closing the grippers"
     # prompt: str = "left: left arm inkdip into inkcap_left_large to fill with true_blue ink, right: right arm stroke after inkdip in inkcap_right_large"
     stroke_image: Path = Path("/nfs/tatbot/designs/wow/stroke_bright_red_right_0000.png")
