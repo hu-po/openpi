@@ -75,7 +75,7 @@ git pull
 rm -rf wandb/
 ```
 
-Upload trained checkpoints to Hugging Face Hub (recommended for sharing):
+Upload trained checkpoints to Hugging Face Hub:
 
 ```bash
 pip install huggingface_hub git-lfs
@@ -160,3 +160,23 @@ uv run python examples/tatbot/infer.py
 ```
 
 policy inference works, but arms mostly just kinda move slowly around and eventually collide with each other and the environment, leading to an estop.
+
+## Full finetune on cloud H100
+
+run inference server on oop (3090)
+
+```bash
+# copy checkpoints from cloud to local
+scp -r root@31.22.104.105:/root/openpi/checkpoints/* /home/oop/openpi/checkpoints/
+
+# make sure to replace the lerobot version in the openpi/pyproject.toml file with the latest version
+# FOR INFERENCE:
+> lerobot = { git = "https://github.com/hu-po/lerobot", rev = "main" }
+# FOR TRAINING:
+> lerobot = { git = "https://github.com/huggingface/lerobot", rev = "0cf864870cf29f4738d3ade893e6fd13fbd7cdb5" }
+
+# run policy server
+uv run scripts/serve_policy.py policy:checkpoint \
+--policy.config=pi05_full_tatbot_finetune \
+--policy.dir="$(pwd)/checkpoints/pi05_full_tatbot_finetune/sweep-hotcpf41/2000"
+```
