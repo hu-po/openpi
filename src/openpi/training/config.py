@@ -521,6 +521,11 @@ class TrainConfig:
     # Number of train steps (batches) to run.
     num_train_steps: int = 30_000
 
+    # If true, save only params (and assets) in checkpoints, omitting optimizer
+    # state and other training state to reduce checkpoint size. Resuming from
+    # such checkpoints will reinitialize the optimizer.
+    save_params_only: bool = False
+
     # How often (in steps) to log training metrics.
     log_interval: int = 100
     # How often (in steps) to save checkpoints.

@@ -49,6 +49,9 @@ def initialize_checkpoint_dir(
             keep_period=keep_period,
             create=False,
             async_options=ocp.AsyncOptions(timeout_secs=7200),
+            # Clean up any temporary directories left around by failed/incomplete saves
+            # to avoid filling disks.
+            cleanup_tmp_directories=True,
         ),
     )
 
@@ -67,6 +70,8 @@ def save_state(
     state: training_utils.TrainState,
     data_loader: _data_loader.DataLoader,
     step: int,
+    *,
+    params_only: bool = False,
 ):
     def save_assets(directory: epath.Path):
         # Save the normalization stats.
@@ -78,11 +83,18 @@ def save_state(
     # Split params that can be used for inference into a separate item.
     with at.disable_typechecking():
         train_state, params = _split_params(state)
-    items = {
-        "assets": save_assets,
-        "train_state": train_state,
-        "params": {"params": params},
-    }
+    if params_only:
+        # Save params (and assets) only to significantly reduce checkpoint size.
+        items = {
+            "assets": save_assets,
+            "params": {"params": params},
+        }
+    else:
+        items = {
+            "assets": save_assets,
+            "train_state": train_state,
+            "params": {"params": params},
+        }
     checkpoint_manager.save(step, items)
 
 
