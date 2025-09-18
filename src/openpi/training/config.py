@@ -864,7 +864,8 @@ _CONFIGS = [
             action_horizon=16,
         ),
         data=LeRobotAlohaDataConfig(
-            repo_id="tatbot/tatbotlogo-livestream-practice-2025y-09m-18d-11h-22m-30s",
+            # repo_id="tatbot/tatbotlogo-livestream-practice",
+            repo_id="tatbot/wow_pi05_aloha",
             assets=AssetsConfig(
                 assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
                 asset_id="trossen",

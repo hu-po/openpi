@@ -7,10 +7,7 @@ preserves state/action, and writes a fresh LeRobot dataset (images mode) that ca
 consumed by LeRobotAlohaDataConfig. Optionally pushes the result to the Hugging Face Hub.
 
 Usage:
-  uv run python scripts/convert_tatbot_to_lerobot_aloha.py \
-    --src-repo-id tatbot/wow-2025y-09m-10d-15h-34m-08s \
-    --dst-repo-id <your-hf-username>/tatbot_wow_pi05_aloha \
-    --push-to-hub
+ uv run python scripts/convert_tatbot_to_lerobot_aloha.py --push-to-hub
 
 Notes:
   - Writes images (not videos) to simplify conversion and avoid re-encoding.
@@ -19,6 +16,7 @@ Notes:
 
 from __future__ import annotations
 
+import os
 import dataclasses
 import json
 from pathlib import Path
@@ -33,11 +31,13 @@ from lerobot.common.datasets.lerobot_dataset import HF_LEROBOT_HOME
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.common.datasets.lerobot_dataset import LeRobotDatasetMetadata
 
+os.environ["CODEBASE_VERSION"] = "v2.1"
 
 @dataclasses.dataclass
 class Args:
     # Source HF dataset (LeRobot v2.x format)
     src_repo_id: str = "tatbot/tatbotlogo-livestream-practice-2025y-09m-18d-11h-22m-30s"
+    src_root: str = "/nfs/tatbot/recordings/tatbotlogo-livestream-practice-2025y-09m-18d-11h-22m-30s"
     # Destination HF model repo to create/push (e.g., your-username/name)
     dst_repo_id: str = "tatbot/tatbotlogo-livestream-practice"
 
@@ -115,12 +115,12 @@ def _create_empty_dst_dataset(
 
 def convert(args: Args) -> None:
     # Download src dataset metadata; loads or fetches into HF_LEROBOT_HOME
-    src_meta = LeRobotDatasetMetadata(args.src_repo_id)
+    src_root = Path(args.src_root)
+    src_meta = LeRobotDatasetMetadata(args.src_repo_id, root=src_root)
     total_eps = src_meta.total_episodes
     fps = src_meta.fps
 
     # Read per-episode tasks to preserve prompts
-    src_root = Path(HF_LEROBOT_HOME) / args.src_repo_id
     episodes_meta = _load_episode_meta(src_root)
     assert len(episodes_meta) == total_eps, "episodes.jsonl length mismatch"
 
