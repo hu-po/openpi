@@ -14,10 +14,7 @@ Run the converter with Tatbot-specific camera mapping and episode stroke images:
 ```bash
 # realsense1 -> cam_left_wrist, realsense2 -> cam_right_wrist
 # cam_high is derived per-episode from episode_{idx}/stroke_{l|r}.png and duplicated across frames.
-uv run python scripts/convert_tatbot_to_lerobot_aloha.py \
-  --src-repo-id tatbot/wow-2025y-09m-10d-15h-34m-08s \
-  --dst-repo-id <your-hf-username>/tatbot_wow_pi05_aloha \
-  --push-to-hub
+uv run python scripts/convert_tatbot_to_lerobot_aloha.py --push-to-hub
 ```
 
 Then use the new repo id in training below.

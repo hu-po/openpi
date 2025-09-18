@@ -37,9 +37,9 @@ from lerobot.common.datasets.lerobot_dataset import LeRobotDatasetMetadata
 @dataclasses.dataclass
 class Args:
     # Source HF dataset (LeRobot v2.x format)
-    src_repo_id: str = "tatbot/wow-2025y-09m-10d-15h-34m-08s"
+    src_repo_id: str = "tatbot/tatbotlogo-livestream-practice-2025y-09m-18d-11h-22m-30s"
     # Destination HF model repo to create/push (e.g., your-username/name)
-    dst_repo_id: str = "tatbot/wow_pi05_aloha"
+    dst_repo_id: str = "tatbot/tatbotlogo-livestream-practice"
 
     # Camera remapping: source keys -> ALOHA keys subset
     # Tatbot mapping: realsense1 -> cam_left_wrist, realsense2 -> cam_right_wrist
