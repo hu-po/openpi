@@ -864,7 +864,7 @@ _CONFIGS = [
             action_horizon=16,
         ),
         data=LeRobotAlohaDataConfig(
-            repo_id="tatbot/wow_pi05_aloha",
+            repo_id="tatbot/tatbotlogo-livestream-practice-2025y-09m-18d-11h-22m-30s",
             assets=AssetsConfig(
                 assets_dir="gs://openpi-assets/checkpoints/pi05_base/assets",
                 asset_id="trossen",
@@ -889,8 +889,8 @@ _CONFIGS = [
             ),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader("gs://openpi-assets/checkpoints/pi05_base/params"),
-        num_train_steps=20_000,
-        batch_size=256,
+        num_train_steps=4_200,
+        save_interval=4_000,
     ),
     # Low-memory LoRA finetuning variant for local smoke tests (single GPU)
     # uv run python scripts/compute_norm_stats.py --config-name pi05_tatbot --max-frames 2048
